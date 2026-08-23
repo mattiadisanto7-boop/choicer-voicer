@@ -13,10 +13,10 @@
   <main id="app" class="shell">
     <section id="home" class="screen active">
       <div class="brand">
-        <div class="logo-orb">🎬</div>
-        <p class="eyebrow">CINEMA DUBBING PARTY</p>
+        <div class="logo-orb">🎤</div>
+        <p class="eyebrow">MUSIC IMITATION PARTY</p>
         <h1>CHOICER<br><span>VOICER</span></h1>
-        <p class="tagline">Guarda. Doppia. Rivediti nel film.</p>
+        <p class="tagline">Ascolta. Imita. Fatti giudicare.</p>
       </div>
       <div class="card home-card">
         <label>Il tuo nome</label>
@@ -37,11 +37,14 @@
         <div><small>STANZA</small><button id="copyCode" class="room-code">-----</button></div>
         <div class="status-dot" title="Online"></div>
       </header>
+
       <div class="hero-mini">
-        <span class="pill">DOPPIAGGIO 1 VS 1</span>
-        <h2>Scene brevi in italiano.<br>La parte da imitare è già scelta.</h2>
+        <span class="pill">1 VS 1 MUSICALE</span>
+        <h2>Un pezzetto di canzone.<br>Una sola possibilità di imitarlo bene.</h2>
       </div>
+
       <div id="playersLobby" class="players"></div>
+
       <div class="card settings-card">
         <div class="section-title"><span>⚙️</span><strong>Partita</strong></div>
         <div class="setting-row">
@@ -51,81 +54,103 @@
           </select>
         </div>
       </div>
+
+      <details id="customPack" class="card custom-card">
+        <summary>＋ Aggiungi una canzone</summary>
+        <div class="custom-form">
+          <input id="customTitle" placeholder="Titolo canzone" maxlength="60" />
+          <input id="customArtist" placeholder="Artista" maxlength="50" />
+          <input id="customYoutube" placeholder="Link YouTube" inputmode="url" />
+          <div class="time-row">
+            <label>Da <input id="customStart" type="number" min="0" value="30" /></label>
+            <label>A <input id="customEnd" type="number" min="4" value="40" /></label>
+          </div>
+          <button id="addSongBtn" class="btn ghost">Aggiungi frammento</button>
+          <small id="customStatus">Durata consentita: da 4 a 15 secondi.</small>
+        </div>
+      </details>
+
       <div class="card cinema-rules">
-        <strong>🎞️ Come funziona</strong>
-        <p>1. Guardi una scena di circa 10 secondi con l'audio italiano originale.</p>
-        <p>2. Premi “Inizia doppiaggio”: la stessa scena riparte muta e registri la tua voce.</p>
-        <p>3. Rivedi la scena con la tua voce al posto dell'originale e la invii.</p>
+        <strong>🎵 Come funziona</strong>
+        <p>1. Ascolti un frammento breve già scelto dal gioco.</p>
+        <p>2. Premi “Registra imitazione” e dopo il conto alla rovescia canti/imiti per la stessa durata.</p>
+        <p>3. L'altro giocatore confronta originale e imitazione e vota da 1 a 10.</p>
       </div>
+
       <div class="lobby-actions">
         <button id="readyBtn" class="btn secondary big">Sono pronto</button>
         <button id="startBtn" class="btn primary big" disabled>Avvia partita</button>
       </div>
-      <p class="hint">Le scene sono preimpostate: niente ricerca della battuta e niente scelta del minuto.</p>
+      <p class="hint">Il microfono viene richiesto solo quando premi Registra imitazione.</p>
     </section>
 
     <section id="game" class="screen">
       <header class="topbar gamebar">
         <div><small>ROUND</small><strong id="roundLabel">1/8</strong></div>
         <div id="gameRoomCode" class="mini-code">-----</div>
-        <button id="muteBtn" class="icon-btn" title="Suoni">🔊</button>
+        <button id="muteBtn" class="icon-btn" title="Suoni interfaccia">🔊</button>
       </header>
+
       <div id="scoreboard" class="scoreboard"></div>
 
       <div id="phasePerform" class="phase">
         <div id="roleBadge" class="role-badge">IL TUO TURNO</div>
-        <div class="prompt-stage">
-          <div id="promptEmoji" class="prompt-emoji">🎬</div>
-          <p id="promptLabel" class="eyebrow">PERSONAGGIO</p>
-          <h2 id="promptMovie">Preparati...</h2>
+        <div class="prompt-stage music-stage">
+          <div id="promptEmoji" class="prompt-emoji">🎵</div>
+          <p class="eyebrow">CANZONE DA IMITARE</p>
+          <h2 id="songTitle">Preparati...</h2>
+          <p id="songArtist" class="song-artist"></p>
           <p id="promptText" class="scene-instruction"></p>
-          <div class="scene-meta"><span id="sceneCharacter"></span><span id="sceneDuration"></span></div>
-          <div id="referenceVideoWrap" class="video-wrap fixed-scene hidden">
-            <iframe id="referenceVideo" title="Scena da doppiare" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+          <div class="scene-meta"><span id="songDuration"></span><span id="songRange"></span></div>
+          <div id="songPlayerWrap" class="video-wrap fixed-scene hidden">
+            <div id="songPlayer"></div>
             <div class="video-lock" aria-hidden="true"></div>
-            <div id="countdown" class="countdown hidden"></div>
           </div>
-          <button id="listenBtn" class="listen-btn"><span>▶</span> GUARDA SCENA ORIGINALE</button>
+          <button id="listenBtn" class="listen-btn"><span>▶</span> ASCOLTA IL PEZZETTO</button>
         </div>
 
         <div id="performControls" class="perform-controls">
-          <div class="steps"><span class="on">1. Guarda</span><span>2. Doppia</span><span>3. Rivedi</span></div>
+          <div class="steps"><span class="on">1. Ascolta</span><span>2. Imita</span><span>3. Voto</span></div>
           <button id="recordBtn" class="record-btn" disabled>
             <span class="mic">🎤</span>
-            <strong>INIZIA<br>DOPPIAGGIO</strong>
+            <strong>REGISTRA<br>IMITAZIONE</strong>
           </button>
-          <div id="recordStatus" class="record-status">Guarda prima la scena</div>
-          <audio id="myRecording" class="hidden"></audio>
+          <div id="countdown" class="countdown-inline hidden"></div>
+          <div id="recordStatus" class="record-status">Ascolta prima il pezzo</div>
+          <div id="recordProgress" class="record-progress hidden"><div id="recordProgressBar"></div></div>
+          <audio id="myRecording" controls class="hidden"></audio>
           <div id="afterRecordActions" class="dub-actions hidden">
-            <button id="previewDubBtn" class="btn secondary">▶ Rivedi col tuo doppiaggio</button>
-            <button id="retryDubBtn" class="btn ghost">↻ Rifai</button>
-            <button id="sendPerformanceBtn" class="btn primary">Invia doppiaggio</button>
+            <button id="retryBtn" class="btn ghost">↻ Rifai</button>
+            <button id="sendPerformanceBtn" class="btn primary">Invia imitazione</button>
           </div>
+          <button id="micHelpBtn" class="mic-help hidden">Il microfono non funziona?</button>
+          <div id="micHelp" class="mic-help-box hidden"></div>
         </div>
+
         <div id="waitingPerformer" class="waiting hidden">
           <div class="spinner"></div>
-          <h3 id="waitingText">L'altro giocatore sta doppiando…</h3>
-          <p>Tra poco potrai vedere il risultato.</p>
+          <h3 id="waitingText">L'altro giocatore sta imitando…</h3>
+          <p>Tra poco toccherà a te giudicare.</p>
         </div>
       </div>
 
       <div id="phaseJudge" class="phase hidden">
         <div id="judgeBadge" class="role-badge judge">SEI IL GIUDICE</div>
         <div class="card judge-card">
-          <h3 id="judgeMovieTitle">Scena</h3>
-          <p id="judgeCharacterText" class="scene-instruction"></p>
-          <div id="judgeVideoWrap" class="video-wrap compact fixed-scene">
-            <iframe id="judgeReferenceVideo" title="Scena da giudicare" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+          <h3 id="judgeSongTitle">Canzone</h3>
+          <p id="judgeSongArtist" class="song-artist"></p>
+          <div id="judgeSongPlayerWrap" class="video-wrap compact fixed-scene">
+            <div id="judgeSongPlayer"></div>
             <div class="video-lock" aria-hidden="true"></div>
           </div>
-          <button id="judgeReferenceBtn" class="audio-line">▶ Guarda originale</button>
-          <button id="judgePerformanceBtn" class="audio-line accent">🎙️ Guarda con la voce del giocatore</button>
+          <button id="judgeReferenceBtn" class="audio-line">▶ Ascolta originale</button>
+          <button id="judgePerformanceBtn" class="audio-line accent">🎤 Ascolta imitazione</button>
           <audio id="judgeRecording"></audio>
         </div>
         <div id="judgeControls">
-          <h3>Quanto era fedele il doppiaggio?</h3>
+          <h3>Quanto gli somigliava?</h3>
           <div id="judgeScale" class="judge-scale"></div>
-          <div class="judge-labels"><span>Per niente 😵</span><span>Perfetto 🤯</span></div>
+          <div class="judge-labels"><span>Per niente 😵</span><span>Identico 🤯</span></div>
           <button id="submitJudgeBtn" class="btn primary big" disabled>Conferma voto</button>
         </div>
         <div id="waitingJudge" class="waiting hidden">
@@ -153,6 +178,7 @@
       </div>
     </section>
   </main>
+
   <div id="toast" class="toast"></div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/app.js"></script>
