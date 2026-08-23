@@ -18,16 +18,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 const DEFAULT_PROMPTS = [
-  { id: 'p1', label: 'Generale drammatico', text: 'Soldati, oggi si vince o si torna a casa!', audio: '/audio/generale.wav', emoji: '⚔️' },
-  { id: 'p2', label: 'Telecronista impazzito', text: 'Incredibile! Non ci posso credere, che giocata!', audio: '/audio/telecronista.wav', emoji: '🎙️' },
-  { id: 'p3', label: 'Robot confuso', text: 'Errore di sistema. Ho appena imparato a fare il caffè.', audio: '/audio/robot.wav', emoji: '🤖' },
-  { id: 'p4', label: 'Re offeso', text: 'Come osi entrare nel mio castello senza biscotti?', audio: '/audio/re.wav', emoji: '👑' },
-  { id: 'p5', label: 'Detective sospettoso', text: 'Qualcosa non torna. Quel gatto sa più di quanto dice.', audio: '/audio/detective.wav', emoji: '🕵️' },
-  { id: 'p6', label: 'Alieno in vacanza', text: 'Salve terrestre, dov’è la spiaggia più vicina?', audio: '/audio/alieno.wav', emoji: '👽' },
-  { id: 'p7', label: 'Chef disperato', text: 'No! La pasta è scotta! Questa è una tragedia nazionale!', audio: '/audio/chef.wav', emoji: '🍝' },
-  { id: 'p8', label: 'Cattivo da film', text: 'Finalmente ci incontriamo. Ho aspettato questo momento.', audio: '/audio/cattivo.wav', emoji: '🦹' },
-  { id: 'p9', label: 'Principessa annoiata', text: 'Un altro drago? Pensavo aveste qualcosa di originale.', audio: '/audio/principessa.wav', emoji: '👸' },
-  { id: 'p10', label: 'Capitano spaziale', text: 'Motori al massimo. Destinazione: il pianeta delle patatine!', audio: '/audio/capitano.wav', emoji: '🚀' }
+  { id: 'movie-godfather', type: 'youtube', movie: 'Il Padrino', label: 'Don Vito Corleone', text: 'Guarda la scena e imita voce, pause e atteggiamento del personaggio.', youtubeId: 'D6me2-OurCw', emoji: '🎩', source: 'Paramount Movies' },
+  { id: 'movie-rocky', type: 'youtube', movie: 'Rocky', label: 'Mickey', text: 'Guarda la scena e prova a rifare il personaggio nel modo più fedele possibile.', youtubeId: 'FC4VfvR_V1s', emoji: '🥊', source: 'Official Rocky Balboa' },
+  { id: 'movie-scent', type: 'youtube', movie: 'Scent of a Woman', label: 'Frank Slade', text: 'Guarda il discorso e imita intensità, ritmo e tono.', youtubeId: 'Jd10x8LiuBc', emoji: '🔥', source: 'Universal Pictures' },
+  { id: 'movie-field', type: 'youtube', movie: 'L’uomo dei sogni', label: 'Terence Mann', text: 'Guarda la scena e prova a riprodurre la stessa presenza e cadenza.', youtubeId: 'mXBMqbWcqzg', emoji: '⚾', source: 'Universal Pictures' },
+  { id: 'movie-mi', type: 'youtube', movie: 'Mission: Impossible – The Final Reckoning', label: 'Ethan Hunt e squadra', text: 'Scegli una battuta della scena e rifalla con la stessa tensione.', youtubeId: 'AP81nzJLS-c', emoji: '🕶️', source: 'Paramount Pictures' },
+  { id: 'movie-topgun', type: 'youtube', movie: 'Top Gun: Maverick', label: 'Maverick', text: 'Guarda la scena e imita una delle battute con la stessa sicurezza.', youtubeId: '8xlHWUvWcVM', emoji: '✈️', source: 'Paramount Movies' },
+  { id: 'movie-puss', type: 'youtube', movie: 'Il gatto con gli stivali 2', label: 'Gatto / Lupo / Perro', text: 'Scegli un personaggio della clip e prova a rifarne voce ed espressività.', youtubeId: 'XY-XgQ25fKM', emoji: '🐱', source: 'Universal Kids' },
+  { id: 'movie-tmnt', type: 'youtube', movie: 'Teenage Mutant Ninja Turtles', label: 'Le Tartarughe / April', text: 'Guarda la scena e imita uno dei personaggi nel modo più convincente possibile.', youtubeId: 'z88vDU5pLxU', emoji: '🐢', source: 'Paramount Movies' }
 ];
 
 function makeCode() {
@@ -108,7 +106,7 @@ io.on('connection', socket => {
       code,
       hostId: socket.id,
       players: [{ id: socket.id, name: normalizeName(name), score: 0, ready: false, connected: true }],
-      settings: { rounds: 8, judgeWeight: 0.6 },
+      settings: { rounds: 8, judgeWeight: 1 },
       phase: 'lobby',
       round: 0,
       currentPerformerId: null,
@@ -156,18 +154,22 @@ io.on('connection', socket => {
     emitState(room);
   });
 
-  socket.on('add-custom-prompt', ({ label, text, audioDataUrl } = {}, ack = () => {}) => {
+  socket.on('add-custom-prompt', ({ movie, character, youtubeUrl } = {}, ack = () => {}) => {
     const room = rooms.get(socket.data.roomCode);
     if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return ack({ ok: false, error: 'Operazione non consentita.' });
-    if (!audioDataUrl || typeof audioDataUrl !== 'string' || audioDataUrl.length > 2_200_000) {
-      return ack({ ok: false, error: 'Audio troppo grande o non valido (max ~1,5 MB).' });
-    }
+    const raw = String(youtubeUrl || '').trim();
+    const match = raw.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/i);
+    const youtubeId = match?.[1] || (/^[A-Za-z0-9_-]{11}$/.test(raw) ? raw : null);
+    if (!youtubeId) return ack({ ok: false, error: 'Inserisci un link YouTube valido.' });
     const prompt = {
       id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      label: String(label || 'Clip personalizzata').slice(0, 40),
-      text: String(text || '').slice(0, 120),
-      audioDataUrl,
-      emoji: '🎧',
+      type: 'youtube',
+      movie: String(movie || 'Scena personalizzata').trim().slice(0, 60),
+      label: String(character || 'Personaggio').trim().slice(0, 50),
+      text: 'Guarda la scena e imitala nel modo più fedele possibile.',
+      youtubeId,
+      emoji: '🎬',
+      source: 'Scena aggiunta dall’host',
       custom: true
     };
     room.prompts.push(prompt);
@@ -221,12 +223,12 @@ io.on('connection', socket => {
     room.phase = 'result';
     ack({ ok: true });
     emitState(room);
+
     setTimeout(() => {
-      const latest = rooms.get(room.code);
-      if (!latest || latest.phase !== 'result') return;
-      if (latest.round >= latest.settings.rounds) finishGame(latest);
-      else beginRound(latest);
-    }, 4200);
+      if (!rooms.has(room.code) || room.phase !== 'result') return;
+      if (room.round >= room.settings.rounds) finishGame(room);
+      else beginRound(room);
+    }, 3200);
   });
 
   socket.on('rematch', () => {
@@ -236,29 +238,24 @@ io.on('connection', socket => {
     room.round = 0;
     room.currentPerformerId = null;
     room.players.forEach(p => { p.score = 0; p.ready = false; });
+    room.usedPromptIds.clear();
     resetRoundData(room);
     emitState(room);
   });
 
   socket.on('disconnect', () => {
-    const code = socket.data.roomCode;
-    const room = rooms.get(code);
+    const room = rooms.get(socket.data.roomCode);
     if (!room) return;
-    room.players = room.players.filter(p => p.id !== socket.id);
-    if (!room.players.length) {
-      rooms.delete(code);
-      return;
-    }
-    if (room.hostId === socket.id) room.hostId = room.players[0].id;
-    room.phase = 'lobby';
-    room.round = 0;
-    room.currentPerformerId = null;
-    room.players.forEach(p => { p.ready = false; p.score = 0; });
-    resetRoundData(room);
+    const player = room.players.find(p => p.id === socket.id);
+    if (player) player.connected = false;
     emitState(room);
+    if (room.cleanupTimer) clearTimeout(room.cleanupTimer);
+    room.cleanupTimer = setTimeout(() => {
+      if (!room.players.some(p => p.connected)) rooms.delete(room.code);
+    }, 5 * 60 * 1000);
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Choicer Voicer Online listening on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Choicer Voicer online on port ${PORT}`);
 });
