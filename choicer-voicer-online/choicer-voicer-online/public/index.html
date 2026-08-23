@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0b16" />
+  <title>Choicer Voicer Online</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="noise"></div>
+  <main id="app" class="shell">
+    <section id="home" class="screen active">
+      <div class="brand">
+        <div class="logo-orb">🎙️</div>
+        <p class="eyebrow">VOICE PARTY GAME</p>
+        <h1>CHOICER<br><span>VOICER</span></h1>
+        <p class="tagline">Ascolta. Imita. Fatti giudicare.</p>
+      </div>
+      <div class="card home-card">
+        <label>Il tuo nome</label>
+        <input id="nameInput" maxlength="20" placeholder="Es. Mattia" autocomplete="nickname" />
+        <button id="createBtn" class="btn primary">Crea stanza</button>
+        <div class="divider"><span>oppure</span></div>
+        <div class="join-row">
+          <input id="roomInput" maxlength="5" placeholder="CODICE" inputmode="text" />
+          <button id="joinBtn" class="btn secondary">Entra</button>
+        </div>
+        <p id="homeError" class="error"></p>
+      </div>
+    </section>
+
+    <section id="lobby" class="screen">
+      <header class="topbar">
+        <button id="leaveBtn" class="icon-btn" title="Esci">←</button>
+        <div>
+          <small>STANZA</small>
+          <button id="copyCode" class="room-code">-----</button>
+        </div>
+        <div class="status-dot" title="Online"></div>
+      </header>
+
+      <div class="hero-mini">
+        <span class="pill">LOBBY 1 VS 1</span>
+        <h2>Pronti a distruggere<br>la vostra dignità?</h2>
+      </div>
+
+      <div id="playersLobby" class="players"></div>
+
+      <div class="card settings-card">
+        <div class="section-title"><span>⚙️</span><strong>Partita</strong></div>
+        <div class="setting-row">
+          <span>Round totali</span>
+          <select id="roundsSelect">
+            <option value="6">6</option><option value="8" selected>8</option><option value="10">10</option><option value="12">12</option><option value="16">16</option>
+          </select>
+        </div>
+      </div>
+
+      <details id="customPack" class="card custom-card">
+        <summary>＋ Aggiungi una tua clip vocale</summary>
+        <div class="custom-form">
+          <input id="customLabel" placeholder="Nome clip (es. Nicla arrabbiata)" maxlength="40" />
+          <input id="customText" placeholder="Testo della frase (facoltativo)" maxlength="120" />
+          <input id="customAudio" type="file" accept="audio/*" />
+          <button id="addClipBtn" class="btn ghost">Aggiungi al pack</button>
+          <small id="customStatus"></small>
+        </div>
+      </details>
+
+      <div class="lobby-actions">
+        <button id="readyBtn" class="btn secondary big">Sono pronto</button>
+        <button id="startBtn" class="btn primary big" disabled>Avvia partita</button>
+      </div>
+      <p class="hint">Il microfono verrà richiesto solo quando dovrai imitare.</p>
+    </section>
+
+    <section id="game" class="screen">
+      <header class="topbar gamebar">
+        <div><small>ROUND</small><strong id="roundLabel">1/8</strong></div>
+        <div id="gameRoomCode" class="mini-code">-----</div>
+        <button id="muteBtn" class="icon-btn" title="Suoni">🔊</button>
+      </header>
+
+      <div id="scoreboard" class="scoreboard"></div>
+
+      <div id="phasePerform" class="phase">
+        <div id="roleBadge" class="role-badge">IL TUO TURNO</div>
+        <div class="prompt-stage">
+          <div id="promptEmoji" class="prompt-emoji">🎙️</div>
+          <p id="promptLabel" class="eyebrow">CLIP</p>
+          <h2 id="promptText">Preparati...</h2>
+          <button id="listenBtn" class="listen-btn"><span>▶</span> ASCOLTA LA VOCE</button>
+          <audio id="referenceAudio" preload="auto"></audio>
+        </div>
+
+        <div id="performControls" class="perform-controls">
+          <div class="steps"><span class="on">1. Ascolta</span><span>2. Imita</span><span>3. Voto</span></div>
+          <button id="recordBtn" class="record-btn" disabled>
+            <span class="mic">🎤</span>
+            <strong>TIENI PREMUTO<br>PER IMITARE</strong>
+          </button>
+          <div id="recordStatus" class="record-status">Ascolta prima la clip</div>
+          <audio id="myRecording" controls class="hidden"></audio>
+          <button id="sendPerformanceBtn" class="btn primary hidden">Invia imitazione</button>
+        </div>
+        <div id="waitingPerformer" class="waiting hidden">
+          <div class="spinner"></div>
+          <h3 id="waitingText">L'altro giocatore sta imitando…</h3>
+          <p>Preparati a giudicare senza pietà.</p>
+        </div>
+      </div>
+
+      <div id="phaseJudge" class="phase hidden">
+        <div id="judgeBadge" class="role-badge judge">SEI IL GIUDICE</div>
+        <div class="card judge-card">
+          <p class="eyebrow">ORIGINALE</p>
+          <button id="judgeReferenceBtn" class="audio-line">▶ Ascolta riferimento</button>
+          <p class="eyebrow top-gap">IMITAZIONE</p>
+          <button id="judgePerformanceBtn" class="audio-line accent">▶ Ascolta imitazione</button>
+          <audio id="judgeRecording"></audio>
+        </div>
+        <div id="judgeControls">
+          <h3>Quanto era convincente?</h3>
+          <div id="judgeScale" class="judge-scale"></div>
+          <div class="judge-labels"><span>Terribile 😵</span><span>Identica 🤯</span></div>
+          <button id="submitJudgeBtn" class="btn primary big" disabled>Conferma voto</button>
+        </div>
+        <div id="waitingJudge" class="waiting hidden">
+          <div class="spinner"></div>
+          <h3>Il giudice sta decidendo…</h3>
+          <p>Questo potrebbe fare male.</p>
+        </div>
+      </div>
+
+      <div id="phaseResult" class="phase hidden result-phase">
+        <p class="eyebrow">RISULTATO ROUND</p>
+        <div id="resultAvatar" class="result-avatar">🎤</div>
+        <h2 id="resultName">Performance</h2>
+        <div class="result-score"><span id="resultScore">84</span><small>/100</small></div>
+        <div class="breakdown">
+          <div><span>Analisi voce</span><strong id="autoScore">80</strong></div>
+          <div><span>Voto avversario</span><strong id="judgeScore">9/10</strong></div>
+        </div>
+        <p>Prossimo round tra pochi secondi…</p>
+      </div>
+
+      <div id="phaseFinished" class="phase hidden finished-phase">
+        <p class="eyebrow">PARTITA FINITA</p>
+        <div class="trophy">🏆</div>
+        <h2 id="winnerTitle">Vittoria!</h2>
+        <p id="winnerText"></p>
+        <div id="finalScores" class="final-scores"></div>
+        <button id="rematchBtn" class="btn primary big">Rivincita</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
