@@ -17,16 +17,20 @@ const rooms = new Map();
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+// Scene italiane, brevi e con segmento già deciso.
+// I video restano su YouTube: il gioco incorpora solo il tratto start/end.
 const DEFAULT_PROMPTS = [
-  { id: 'movie-godfather', type: 'youtube', movie: 'Il Padrino', label: 'Don Vito Corleone', text: 'Guarda la scena e imita voce, pause e atteggiamento del personaggio.', youtubeId: 'D6me2-OurCw', emoji: '🎩', source: 'Paramount Movies' },
-  { id: 'movie-rocky', type: 'youtube', movie: 'Rocky', label: 'Mickey', text: 'Guarda la scena e prova a rifare il personaggio nel modo più fedele possibile.', youtubeId: 'FC4VfvR_V1s', emoji: '🥊', source: 'Official Rocky Balboa' },
-  { id: 'movie-scent', type: 'youtube', movie: 'Scent of a Woman', label: 'Frank Slade', text: 'Guarda il discorso e imita intensità, ritmo e tono.', youtubeId: 'Jd10x8LiuBc', emoji: '🔥', source: 'Universal Pictures' },
-  { id: 'movie-field', type: 'youtube', movie: 'L’uomo dei sogni', label: 'Terence Mann', text: 'Guarda la scena e prova a riprodurre la stessa presenza e cadenza.', youtubeId: 'mXBMqbWcqzg', emoji: '⚾', source: 'Universal Pictures' },
-  { id: 'movie-mi', type: 'youtube', movie: 'Mission: Impossible – The Final Reckoning', label: 'Ethan Hunt e squadra', text: 'Scegli una battuta della scena e rifalla con la stessa tensione.', youtubeId: 'AP81nzJLS-c', emoji: '🕶️', source: 'Paramount Pictures' },
-  { id: 'movie-topgun', type: 'youtube', movie: 'Top Gun: Maverick', label: 'Maverick', text: 'Guarda la scena e imita una delle battute con la stessa sicurezza.', youtubeId: '8xlHWUvWcVM', emoji: '✈️', source: 'Paramount Movies' },
-  { id: 'movie-puss', type: 'youtube', movie: 'Il gatto con gli stivali 2', label: 'Gatto / Lupo / Perro', text: 'Scegli un personaggio della clip e prova a rifarne voce ed espressività.', youtubeId: 'XY-XgQ25fKM', emoji: '🐱', source: 'Universal Kids' },
-  { id: 'movie-tmnt', type: 'youtube', movie: 'Teenage Mutant Ninja Turtles', label: 'Le Tartarughe / April', text: 'Guarda la scena e imita uno dei personaggi nel modo più convincente possibile.', youtubeId: 'z88vDU5pLxU', emoji: '🐢', source: 'Paramount Movies' }
-];
+  { id:'joker-1', movie:'Joker', label:'Arthur Fleck', youtubeId:'jzZ1ALIH7Po', start:31, end:41, emoji:'🃏', source:'Warner Bros. Italia', language:'it' },
+  { id:'joker-2', movie:'Joker', label:'Arthur Fleck', youtubeId:'o7nkJDjuSp4', start:53, end:64, emoji:'🃏', source:'Warner Bros. Italia', language:'it' },
+  { id:'barbie-1', movie:'Barbie', label:'Barbie', youtubeId:'WaOn1q0PHoE', start:37, end:47, emoji:'💗', source:'Warner Bros. Italia', language:'it' },
+  { id:'barbie-2', movie:'Barbie', label:'Ken', youtubeId:'WaOn1q0PHoE', start:68, end:79, emoji:'🕺', source:'Warner Bros. Italia', language:'it' },
+  { id:'mario-1', movie:'Super Mario Bros. Il Film', label:'Mario', youtubeId:'eyOP-gA4tIo', start:34, end:44, emoji:'🍄', source:'Universal Pictures International Italy', language:'it' },
+  { id:'mario-2', movie:'Super Mario Bros. Il Film', label:'Principessa Peach', youtubeId:'eyOP-gA4tIo', start:69, end:79, emoji:'👑', source:'Universal Pictures International Italy', language:'it' },
+  { id:'gru-1', movie:'Cattivissimo Me 4', label:'Gru', youtubeId:'wA1EJaxJocY', start:29, end:39, emoji:'🟡', source:'Universal Pictures International Italy', language:'it' },
+  { id:'gru-2', movie:'Cattivissimo Me 4', label:'Maxime Le Mal', youtubeId:'Lfm204Dhb-0', start:49, end:59, emoji:'😈', source:'Universal Pictures International Italy', language:'it' },
+  { id:'fastx-1', movie:'Fast X', label:'Dom Toretto', youtubeId:'2rKc-PDzGzc', start:23, end:34, emoji:'🏎️', source:'Universal Pictures International Italy', language:'it' },
+  { id:'fastx-2', movie:'Fast X', label:'Dante Reyes', youtubeId:'1rUyJtfOgwE', start:42, end:53, emoji:'🔥', source:'Universal Pictures International Italy', language:'it' }
+].map(p => ({ ...p, duration: p.end - p.start, type:'youtube', text:`Imita ${p.label}. La parte da doppiare è già scelta e dura ${p.end - p.start} secondi.` }));
 
 function makeCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -53,25 +57,17 @@ function publicState(room) {
   };
 }
 
-function emitState(room) {
-  io.to(room.code).emit('state', publicState(room));
-}
-
-function resetRoundData(room) {
-  room.currentPrompt = null;
-  room.performance = null;
-  room.lastResult = null;
-}
+function emitState(room) { io.to(room.code).emit('state', publicState(room)); }
+function resetRoundData(room) { room.currentPrompt = null; room.performance = null; room.lastResult = null; }
 
 function pickPrompt(room) {
-  const used = room.usedPromptIds;
-  let available = room.prompts.filter(p => !used.has(p.id));
+  let available = room.prompts.filter(p => !room.usedPromptIds.has(p.id));
   if (!available.length) {
-    used.clear();
+    room.usedPromptIds.clear();
     available = [...room.prompts];
   }
   const prompt = available[Math.floor(Math.random() * available.length)];
-  used.add(prompt.id);
+  room.usedPromptIds.add(prompt.id);
   return prompt;
 }
 
@@ -95,9 +91,7 @@ function finishGame(room) {
   io.to(room.code).emit('game-finished');
 }
 
-function normalizeName(name) {
-  return String(name || '').trim().slice(0, 20) || 'Giocatore';
-}
+function normalizeName(name) { return String(name || '').trim().slice(0, 20) || 'Giocatore'; }
 
 io.on('connection', socket => {
   socket.on('create-room', ({ name } = {}, ack = () => {}) => {
@@ -106,7 +100,7 @@ io.on('connection', socket => {
       code,
       hostId: socket.id,
       players: [{ id: socket.id, name: normalizeName(name), score: 0, ready: false, connected: true }],
-      settings: { rounds: 8, judgeWeight: 1 },
+      settings: { rounds: 8 },
       phase: 'lobby',
       round: 0,
       currentPerformerId: null,
@@ -154,29 +148,6 @@ io.on('connection', socket => {
     emitState(room);
   });
 
-  socket.on('add-custom-prompt', ({ movie, character, youtubeUrl } = {}, ack = () => {}) => {
-    const room = rooms.get(socket.data.roomCode);
-    if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return ack({ ok: false, error: 'Operazione non consentita.' });
-    const raw = String(youtubeUrl || '').trim();
-    const match = raw.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/i);
-    const youtubeId = match?.[1] || (/^[A-Za-z0-9_-]{11}$/.test(raw) ? raw : null);
-    if (!youtubeId) return ack({ ok: false, error: 'Inserisci un link YouTube valido.' });
-    const prompt = {
-      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      type: 'youtube',
-      movie: String(movie || 'Scena personalizzata').trim().slice(0, 60),
-      label: String(character || 'Personaggio').trim().slice(0, 50),
-      text: 'Guarda la scena e imitala nel modo più fedele possibile.',
-      youtubeId,
-      emoji: '🎬',
-      source: 'Scena aggiunta dall’host',
-      custom: true
-    };
-    room.prompts.push(prompt);
-    ack({ ok: true });
-    emitState(room);
-  });
-
   socket.on('start-game', () => {
     const room = rooms.get(socket.data.roomCode);
     if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return;
@@ -188,18 +159,13 @@ io.on('connection', socket => {
     beginRound(room);
   });
 
-  socket.on('submit-performance', ({ audioDataUrl, autoScore, features } = {}, ack = () => {}) => {
+  socket.on('submit-performance', ({ audioDataUrl } = {}, ack = () => {}) => {
     const room = rooms.get(socket.data.roomCode);
     if (!room || room.phase !== 'perform' || room.currentPerformerId !== socket.id) return ack({ ok: false });
     if (!audioDataUrl || typeof audioDataUrl !== 'string' || audioDataUrl.length > 2_500_000) {
       return ack({ ok: false, error: 'Registrazione troppo grande.' });
     }
-    room.performance = {
-      performerId: socket.id,
-      audioDataUrl,
-      autoScore: Math.max(0, Math.min(100, Math.round(Number(autoScore) || 0))),
-      features: features || null
-    };
+    room.performance = { performerId: socket.id, audioDataUrl };
     room.phase = 'judge';
     ack({ ok: true });
     emitState(room);
@@ -210,16 +176,10 @@ io.on('connection', socket => {
     if (!room || room.phase !== 'judge' || !room.performance) return ack({ ok: false });
     if (socket.id === room.currentPerformerId) return ack({ ok: false, error: 'Il performer non può votarsi.' });
     const judgeScore = Math.max(1, Math.min(10, Number(score) || 1));
-    const auto = room.performance.autoScore;
-    const final = Math.round((auto * (1 - room.settings.judgeWeight)) + ((judgeScore * 10) * room.settings.judgeWeight));
+    const finalScore = Math.round(judgeScore * 10);
     const performer = room.players.find(p => p.id === room.currentPerformerId);
-    if (performer) performer.score += final;
-    room.lastResult = {
-      performerId: room.currentPerformerId,
-      autoScore: auto,
-      judgeScore,
-      finalScore: final
-    };
+    if (performer) performer.score += finalScore;
+    room.lastResult = { performerId: room.currentPerformerId, judgeScore, finalScore };
     room.phase = 'result';
     ack({ ok: true });
     emitState(room);
@@ -256,6 +216,4 @@ io.on('connection', socket => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Choicer Voicer online on port ${PORT}`);
-});
+server.listen(PORT, '0.0.0.0', () => console.log(`Choicer Voicer online on port ${PORT}`));
