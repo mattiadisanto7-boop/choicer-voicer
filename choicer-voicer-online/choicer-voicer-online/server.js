@@ -12,50 +12,85 @@ const rooms = new Map();
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Frammenti brevi da video YouTube. Le clip restano su YouTube: il progetto memorizza solo ID, tempi e brevi parole-guida.
-const DEFAULT_PROMPTS = [
+const SONGS = [
   // Italiano
-  { id:'song-sinceramente', title:'Sinceramente', artist:'Annalisa', language:'IT', youtubeId:'NfEp5l0UMBE', start:46, end:56, emoji:'💎', lyricCue:'Sinceramente, quando, quando, quando, quando piango' },
-  { id:'song-monamour', title:'Mon Amour', artist:'Annalisa', language:'IT', youtubeId:'RzyD08-w-tk', start:49, end:59, emoji:'💋', lyricCue:'Ho visto lei che bacia lui' },
-  { id:'song-duevite', title:'Due Vite', artist:'Marco Mengoni', language:'IT', youtubeId:'_iS4STWKSvk', start:60, end:71, emoji:'🌙', lyricCue:"Siamo i soli svegli in tutto l'universo" },
-  { id:'song-italodisco', title:'ITALODISCO', artist:'The Kolors', language:'IT', youtubeId:'cIkXBFACp4s', start:56, end:66, emoji:'🪩', lyricCue:'Questa non è Ibiza' },
-  { id:'song-lanoia', title:'La noia', artist:'Angelina Mango', language:'IT', youtubeId:'psiytW9Or2s', start:51, end:61, emoji:'🍊', lyricCue:'È la cumbia della noia' },
-  { id:'song-giovani', title:'Giovani Wannabe', artist:'Pinguini Tattici Nucleari', language:'IT', youtubeId:'4GXDFtuG9Xo', start:50, end:60, emoji:'🐧', lyricCue:'Siamo giovani wannabe' },
-  { id:'song-vai', title:'Vai!', artist:'ALFA', language:'IT', youtubeId:'Z6X3K13EqQI', start:38, end:48, emoji:'🚀', lyricCue:'Vai, vai, vai' },
-  { id:'song-mntlv', title:'Ma non tutta la vita', artist:'Ricchi e Poveri', language:'IT', youtubeId:'lhmB3KIXchA', start:47, end:57, emoji:'❤️', lyricCue:'Ma non tutta la vita' },
-  { id:'song-clickboom', title:'CLICK BOOM!', artist:'Rose Villain', language:'IT', youtubeId:'8mCBkGR_PRc', start:50, end:60, emoji:'💥', lyricCue:'Click boom boom boom' },
-  { id:'song-geolier', title:"I P' ME, TU P' TE", artist:'Geolier', language:'IT', youtubeId:'Ulwjcz49qNk', start:45, end:55, emoji:'🎧', lyricCue:"I p' me, tu p' te" },
+  ['sinceramente','Sinceramente','Annalisa','IT','NfEp5l0UMBE',46,56,'💎','pop','Sinceramente, quando, quando, quando, quando piango'],
+  ['monamour','Mon Amour','Annalisa','IT','RzyD08-w-tk',49,59,'💋','dance','Ho visto lei che bacia lui'],
+  ['duevite','Due Vite','Marco Mengoni','IT','_iS4STWKSvk',60,71,'🌙','ballad',"Siamo i soli svegli in tutto l'universo"],
+  ['italodisco','ITALODISCO','The Kolors','IT','cIkXBFACp4s',56,66,'🪩','dance','Questa non è Ibiza'],
+  ['lanoia','La noia','Angelina Mango','IT','psiytW9Or2s',51,61,'🍊','dance','È la cumbia della noia'],
+  ['giovani','Giovani Wannabe','Pinguini Tattici Nucleari','IT','4GXDFtuG9Xo',50,60,'🐧','pop','Siamo giovani wannabe'],
+  ['vai','Vai!','ALFA','IT','Z6X3K13EqQI',38,48,'🚀','pop','Vai, vai, vai'],
+  ['mntlv','Ma non tutta la vita','Ricchi e Poveri','IT','lhmB3KIXchA',47,57,'❤️','dance','Ma non tutta la vita'],
+  ['clickboom','CLICK BOOM!','Rose Villain','IT','8mCBkGR_PRc',50,60,'💥','pop','Click boom boom boom'],
+  ['geolier',"I P' ME, TU P' TE",'Geolier','IT','Ulwjcz49qNk',45,55,'🎧','rap',"I p' me, tu p' te"],
+  ['cenere','CENERE','Lazza','IT','A5ab7U9RVLE',55,65,'🌫️','rap','Come cenere'],
+  ['bellissima','Bellissima','Annalisa','IT','qz88Dx-_lA4',54,64,'✨','pop','Ero bellissima'],
+  ['due-elodie','Due','Elodie','IT','wMohbrKCAkM',54,64,'💔','pop','Le cose sono due'],
+  ['ragazzo-ragazza','Un ragazzo una ragazza','The Kolors','IT','L6c_NhXeGYo',54,64,'🌙','dance','Un ragazzo incontra una ragazza'],
+  ['brividi','Brividi','Mahmood & BLANCO','IT','MA_5P3u0apQ',56,66,'🥶','ballad','Nudo con i brividi'],
 
   // Inglese / internazionale
-  { id:'song-espresso', title:'Espresso', artist:'Sabrina Carpenter', language:'EN', youtubeId:'eVli-tstM5E', start:46, end:56, emoji:'☕', lyricCue:"Now he's thinkin' 'bout me every night" },
-  { id:'song-birds', title:'BIRDS OF A FEATHER', artist:'Billie Eilish', language:'EN', youtubeId:'V9PVRfjEBTI', start:65, end:75, emoji:'🪶', lyricCue:"I want you to stay 'til I'm in the grave" },
-  { id:'song-diewithasmile', title:'Die With A Smile', artist:'Lady Gaga & Bruno Mars', language:'EN', youtubeId:'kPa7bsKwL-c', start:70, end:80, emoji:'🌹', lyricCue:"If the world was ending, I'd wanna be" },
-  { id:'song-blindinglights', title:'Blinding Lights', artist:'The Weeknd', language:'EN', youtubeId:'4NRXx6U8ABQ', start:55, end:65, emoji:'🌃', lyricCue:"I said, ooh, I'm blinded by the lights" },
-  { id:'song-levitating', title:'Levitating', artist:'Dua Lipa', language:'EN', youtubeId:'TUVcZfQe-Kw', start:51, end:61, emoji:'✨', lyricCue:'You want me, I want you, baby' },
-  { id:'song-shapeofyou', title:'Shape of You', artist:'Ed Sheeran', language:'EN', youtubeId:'JGwWNGJdvx8', start:44, end:54, emoji:'🕺', lyricCue:"I'm in love with the shape of you" },
-  { id:'song-asitwas', title:'As It Was', artist:'Harry Styles', language:'EN', youtubeId:'H5v3kku4y6Q', start:45, end:55, emoji:'🌀', lyricCue:"You know it's not the same as it was" },
-  { id:'song-shakeitoff', title:'Shake It Off', artist:'Taylor Swift', language:'EN', youtubeId:'nfWlot6h_JM', start:52, end:62, emoji:'💃', lyricCue:'Players gonna play, play, play, play, play' },
-  { id:'song-rolling', title:'Rolling in the Deep', artist:'Adele', language:'EN', youtubeId:'rYEDA3JcQqw', start:53, end:63, emoji:'🔥', lyricCue:'We could have had it all' },
-  { id:'song-lockedout', title:'Locked Out of Heaven', artist:'Bruno Mars', language:'EN', youtubeId:'e-fA-gBCkj0', start:60, end:70, emoji:'🌤️', lyricCue:"I've been locked out of heaven for too long" },
-  { id:'song-vampire', title:'vampire', artist:'Olivia Rodrigo', language:'EN', youtubeId:'RlPNh_PBZb4', start:62, end:72, emoji:'🧛', lyricCue:'You only come out at night' },
-  { id:'song-apt', title:'APT.', artist:'ROSÉ & Bruno Mars', language:'EN', youtubeId:'ekr2nIex040', start:40, end:50, emoji:'🎉', lyricCue:"Don't you want me like I want you, baby" },
-  { id:'song-bohemian', title:'Bohemian Rhapsody', artist:'Queen', language:'EN', youtubeId:'fJ9rUzIMcZQ', start:78, end:88, emoji:'👑', lyricCue:'Mama, just killed a man' },
-  { id:'song-nevergonna', title:'Never Gonna Give You Up', artist:'Rick Astley', language:'EN', youtubeId:'dQw4w9WgXcQ', start:42, end:52, emoji:'🕺', lyricCue:'Never gonna give you up' },
-  { id:'song-takeonme', title:'Take On Me', artist:'a-ha', language:'EN', youtubeId:'djV11Xbc914', start:58, end:68, emoji:'✏️', lyricCue:'Take on me, take me on' },
-  { id:'song-smells', title:'Smells Like Teen Spirit', artist:'Nirvana', language:'EN', youtubeId:'hTWKbfoikeg', start:68, end:78, emoji:'🎸', lyricCue:"With the lights out, it's less dangerous" },
-  { id:'song-numb', title:'Numb', artist:'Linkin Park', language:'EN', youtubeId:'kXYiU_JCYtU', start:61, end:71, emoji:'⚡', lyricCue:"I've become so numb, I can't feel you there" },
-  { id:'song-vivalavida', title:'Viva La Vida', artist:'Coldplay', language:'EN', youtubeId:'dvgZkm1xWPE', start:48, end:58, emoji:'🏰', lyricCue:'I hear Jerusalem bells are ringing' },
-  { id:'song-believer', title:'Believer', artist:'Imagine Dragons', language:'EN', youtubeId:'7wtfhZwyrcc', start:70, end:80, emoji:'🐉', lyricCue:'Pain! You made me a, you made me a believer' },
-  { id:'song-countingstars', title:'Counting Stars', artist:'OneRepublic', language:'EN', youtubeId:'hT_nvWreIhg', start:54, end:64, emoji:'⭐', lyricCue:"Lately, I've been, I've been losing sleep" },
-  { id:'song-sugar', title:'Sugar', artist:'Maroon 5', language:'EN', youtubeId:'09R8_2nJtjg', start:72, end:82, emoji:'🍬', lyricCue:"Sugar, yes please, won't you come and put it down" },
-  { id:'song-chandelier', title:'Chandelier', artist:'Sia', language:'EN', youtubeId:'2vjPBrBU-TM', start:60, end:70, emoji:'💡', lyricCue:"I'm gonna swing from the chandelier" },
-  { id:'song-badromance', title:'Bad Romance', artist:'Lady Gaga', language:'EN', youtubeId:'qrO4YZeyl0I', start:53, end:63, emoji:'🖤', lyricCue:'I want your love and I want your revenge' },
-  { id:'song-flowers', title:'Flowers', artist:'Miley Cyrus', language:'EN', youtubeId:'G7KNmW9a75Y', start:56, end:66, emoji:'🌸', lyricCue:'I can buy myself flowers' }
-].map(p => ({
-  ...p,
-  type:'youtube-song',
-  duration:p.end-p.start,
-  text:`Ascolta questi ${p.end-p.start} secondi e prova a imitarli nel modo più fedele possibile.`
+  ['espresso','Espresso','Sabrina Carpenter','EN','eVli-tstM5E',46,56,'☕','pop',"Now he's thinkin' 'bout me every night"],
+  ['birds','BIRDS OF A FEATHER','Billie Eilish','EN','V9PVRfjEBTI',65,75,'🪶','ballad',"I want you to stay 'til I'm in the grave"],
+  ['diewithasmile','Die With A Smile','Lady Gaga & Bruno Mars','EN','kPa7bsKwL-c',70,80,'🌹','ballad',"If the world was ending, I'd wanna be"],
+  ['blindinglights','Blinding Lights','The Weeknd','EN','4NRXx6U8ABQ',55,65,'🌃','dance',"I'm blinded by the lights"],
+  ['levitating','Levitating','Dua Lipa','EN','TUVcZfQe-Kw',51,61,'✨','dance','You want me, I want you, baby'],
+  ['shapeofyou','Shape of You','Ed Sheeran','EN','JGwWNGJdvx8',44,54,'🕺','pop',"I'm in love with the shape of you"],
+  ['asitwas','As It Was','Harry Styles','EN','H5v3kku4y6Q',45,55,'🌀','pop',"You know it's not the same as it was"],
+  ['shakeitoff','Shake It Off','Taylor Swift','EN','nfWlot6h_JM',52,62,'💃','dance','Shake it off'],
+  ['rolling','Rolling in the Deep','Adele','EN','rYEDA3JcQqw',53,63,'🔥','power','We could have had it all'],
+  ['lockedout','Locked Out of Heaven','Bruno Mars','EN','e-fA-gBCkj0',60,70,'🌤️','pop',"I've been locked out of heaven"],
+  ['vampire','vampire','Olivia Rodrigo','EN','RlPNh_PBZb4',62,72,'🧛','power','Vampire'],
+  ['apt','APT.','ROSÉ & Bruno Mars','EN','ekr2nIex040',40,50,'🎉','dance','APT.'],
+  ['bohemian','Bohemian Rhapsody','Queen','EN','fJ9rUzIMcZQ',78,88,'👑','power','Mama, just killed a man'],
+  ['nevergonna','Never Gonna Give You Up','Rick Astley','EN','dQw4w9WgXcQ',42,52,'🕺','dance','Never gonna give you up'],
+  ['takeonme','Take On Me','a-ha','EN','djV11Xbc914',58,68,'✏️','power','Take on me, take me on'],
+  ['smells','Smells Like Teen Spirit','Nirvana','EN','hTWKbfoikeg',68,78,'🎸','rock','With the lights out'],
+  ['numb','Numb','Linkin Park','EN','kXYiU_JCYtU',61,71,'⚡','rock',"I've become so numb"],
+  ['vivalavida','Viva La Vida','Coldplay','EN','dvgZkm1xWPE',48,58,'🏰','pop','I hear Jerusalem bells are ringing'],
+  ['believer','Believer','Imagine Dragons','EN','7wtfhZwyrcc',70,80,'🐉','rock','You made me a believer'],
+  ['countingstars','Counting Stars','OneRepublic','EN','hT_nvWreIhg',54,64,'⭐','pop',"I've been losing sleep"],
+  ['sugar','Sugar','Maroon 5','EN','09R8_2nJtjg',72,82,'🍬','pop','Sugar, yes please'],
+  ['chandelier','Chandelier','Sia','EN','2vjPBrBU-TM',60,70,'💡','power',"I'm gonna swing from the chandelier"],
+  ['badromance','Bad Romance','Lady Gaga','EN','qrO4YZeyl0I',53,63,'🖤','dance','I want your love'],
+  ['flowers','Flowers','Miley Cyrus','EN','G7KNmW9a75Y',56,66,'🌸','pop','I can buy myself flowers'],
+  ['cheapthrills','Cheap Thrills','Sia','EN','nYh-n7EOtMA',52,62,'💸','dance','Cheap thrills'],
+  ['titanium','Titanium','David Guetta feat. Sia','EN','JRfuAukYTKg',58,68,'🛡️','power','I am titanium'],
+  ['dancemonkey','Dance Monkey','Tones and I','EN','q0hyYWKXF0Q',48,58,'🐒','pop','Dance for me'],
+  ['wakawaka','Waka Waka','Shakira','EN','pRpeEdMmmQ0',54,64,'⚽','dance','This time for Africa'],
+  ['uptownfunk','Uptown Funk','Mark Ronson feat. Bruno Mars','EN','OPf0YbXqDm0',55,65,'🕺','dance','Uptown funk'],
+  ['happy','Happy','Pharrell Williams','EN','ZbZSe6N_BXs',48,58,'😄','dance','Because I am happy'],
+  ['roar','Roar','Katy Perry','EN','CevxZvSJLk8',58,68,'🦁','power','I got the eye of the tiger'],
+  ['firework','Firework','Katy Perry','EN','QGJuMBdaqIw',62,72,'🎆','power','Baby, you are a firework'],
+  ['radioactive','Radioactive','Imagine Dragons','EN','ktvTqknDobU',54,64,'☢️','rock','Welcome to the new age'],
+  ['demons','Demons','Imagine Dragons','EN','mWRsgZuwf_8',50,60,'😈','rock','This is my kingdom come'],
+  ['thunder','Thunder','Imagine Dragons','EN','fKopy74weus',50,60,'⛈️','rock','Thunder, feel the thunder'],
+  ['someoneyouloved','Someone You Loved','Lewis Capaldi','EN','zABLecsR5UE',50,60,'💔','ballad','Now the day bleeds'],
+  ['perfect','Perfect','Ed Sheeran','EN','2Vv-BfVoq4g',58,68,'💞','ballad','Darling, you look perfect tonight'],
+  ['thinkingoutloud','Thinking Out Loud','Ed Sheeran','EN','lp-EO5I60KA',58,68,'💍','ballad','Take me into your loving arms'],
+  ['senorita','Señorita','Shawn Mendes & Camila Cabello','EN','Pkh8UtuejGw',50,60,'🌴','pop','I love it when you call me señorita'],
+  ['havana','Havana','Camila Cabello','EN','BQ0mxQXmLsk',56,66,'🌺','pop','Havana, ooh na-na'],
+  ['stay','STAY','The Kid LAROI & Justin Bieber','EN','kTJczUoc26U',45,55,'⏳','pop','I need you to stay'],
+  ['sorry','Sorry','Justin Bieber','EN','fRh_vgS2dFE',48,58,'🙏','dance','Is it too late now to say sorry'],
+  ['wmuby','What Makes You Beautiful','One Direction','EN','QJO3ROT-A4E',55,65,'💫','pop','You do not know you are beautiful'],
+  ['storyofmylife','Story of My Life','One Direction','EN','W-TE_Ys4iwM',52,62,'📖','ballad','The story of my life'],
+  ['watermelon','Watermelon Sugar','Harry Styles','EN','E07s5ZYygMg',50,60,'🍉','pop','Watermelon sugar high'],
+  ['adoreyou','Adore You','Harry Styles','EN','VF-r5TtlT9w',54,64,'🐟','pop','I would walk through fire for you'],
+  ['wreckingball','Wrecking Ball','Miley Cyrus','EN','My2FRPA3Gf8',58,68,'🔨','power','I came in like a wrecking ball'],
+  ['pokerface','Poker Face','Lady Gaga','EN','bESGLojNYSo',50,60,'♠️','dance','Poker face'],
+  ['justdance','Just Dance','Lady Gaga','EN','2Abk1jAONjw',50,60,'🪩','dance','Just dance'],
+  ['telephone','Telephone','Lady Gaga feat. Beyoncé','EN','EVBsypHzF3U',80,90,'☎️','dance','Stop calling'],
+  ['newrules','New Rules','Dua Lipa','EN','k2qgadSvNyU',52,62,'📏','pop','I got new rules'],
+  ['dontstartnow','Don’t Start Now','Dua Lipa','EN','oygrmJFKYZY',50,60,'🛼','dance','Do not start caring about me now'],
+  ['shallow','Shallow','Lady Gaga & Bradley Cooper','EN','bo_efYhYU2A',80,90,'🎤','power','I am off the deep end'],
+  ['despacito','Despacito','Luis Fonsi feat. Daddy Yankee','ES','kJQP7kiw5Fk',54,64,'🌴','dance','Despacito'],
+  ['gangnam','Gangnam Style','PSY','KO','9bZkp7q19f0',60,70,'🕶️','dance','Oppan Gangnam Style'],
+  ['dynamite','Dynamite','BTS','EN','gdZLi9oWNZg',50,60,'🧨','dance','Light it up like dynamite']
+].map(([id,title,artist,language,youtubeId,start,end,emoji,style,lyricCue]) => ({
+  id:`song-${id}`, title, artist, language, youtubeId, start, end, emoji, style, lyricCue,
+  type:'youtube-song', duration:end-start,
+  text:`Ascolta questi ${end-start} secondi e prova a imitarli nel modo più fedele possibile.`
 }));
 
 function makeCode(){
@@ -63,6 +98,10 @@ function makeCode(){
   let code='';
   do{ code=Array.from({length:5},()=>chars[Math.floor(Math.random()*chars.length)]).join(''); }while(rooms.has(code));
   return code;
+}
+function publicPerformance(performance){
+  if(!performance)return null;
+  return { performerId:performance.performerId, audioDataUrl:performance.audioDataUrl };
 }
 function publicState(room){
   return {
@@ -74,7 +113,7 @@ function publicState(room){
     round:room.round,
     currentPerformerId:room.currentPerformerId,
     currentPrompt:room.currentPrompt,
-    performance:room.performance,
+    performance:publicPerformance(room.performance),
     lastResult:room.lastResult,
     promptsCount:room.prompts.length
   };
@@ -100,11 +139,8 @@ function beginRound(room){
   io.to(room.code).emit('round-start',{round:room.round,performerId:room.currentPerformerId});
 }
 function finishGame(room){
-  room.phase='finished';
-  room.currentPrompt=null;
-  room.performance=null;
-  emitState(room);
-  io.to(room.code).emit('game-finished');
+  room.phase='finished'; room.currentPrompt=null; room.performance=null;
+  emitState(room); io.to(room.code).emit('game-finished');
 }
 function normalizeName(name){ return String(name||'').trim().slice(0,20)||'Giocatore'; }
 function youtubeIdFrom(value){
@@ -113,23 +149,27 @@ function youtubeIdFrom(value){
   const m=raw.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/i);
   return m?.[1]||null;
 }
+function cleanBreakdown(value){
+  const src=value&&typeof value==='object'?value:{};
+  const out={};
+  for(const key of ['intonation','rhythm','voice','dynamics','cleanliness']){
+    out[key]=Math.max(0,Math.min(100,Math.round(Number(src[key])||0)));
+  }
+  return out;
+}
 
 io.on('connection',socket=>{
   socket.on('create-room',({name}={},ack=()=>{})=>{
     const code=makeCode();
     const room={
-      code,
-      hostId:socket.id,
+      code, hostId:socket.id,
       players:[{id:socket.id,name:normalizeName(name),score:0,ready:false,connected:true}],
-      settings:{rounds:8},
+      settings:{rounds:8,aiWeight:0.5},
       phase:'lobby',round:0,currentPerformerId:null,currentPrompt:null,performance:null,lastResult:null,
-      prompts:DEFAULT_PROMPTS.map(x=>({...x})),usedPromptIds:new Set(),cleanupTimer:null
+      prompts:SONGS.map(x=>({...x})),usedPromptIds:new Set(),cleanupTimer:null
     };
-    rooms.set(code,room);
-    socket.join(code);
-    socket.data.roomCode=code;
-    ack({ok:true,code,playerId:socket.id});
-    emitState(room);
+    rooms.set(code,room); socket.join(code); socket.data.roomCode=code;
+    ack({ok:true,code,playerId:socket.id}); emitState(room);
   });
 
   socket.on('join-room',({code,name}={},ack=()=>{})=>{
@@ -139,10 +179,8 @@ io.on('connection',socket=>{
     if(room.players.length>=2)return ack({ok:false,error:'La stanza è già piena.'});
     if(room.phase!=='lobby')return ack({ok:false,error:'La partita è già iniziata.'});
     room.players.push({id:socket.id,name:normalizeName(name),score:0,ready:false,connected:true});
-    socket.join(code);
-    socket.data.roomCode=code;
-    ack({ok:true,code,playerId:socket.id});
-    emitState(room);
+    socket.join(code); socket.data.roomCode=code;
+    ack({ok:true,code,playerId:socket.id}); emitState(room);
   });
 
   socket.on('set-ready',({ready}={})=>{
@@ -150,8 +188,7 @@ io.on('connection',socket=>{
     if(!room||room.phase!=='lobby')return;
     const player=room.players.find(p=>p.id===socket.id);
     if(!player)return;
-    player.ready=!!ready;
-    emitState(room);
+    player.ready=!!ready; emitState(room);
   });
 
   socket.on('update-settings',({rounds}={})=>{
@@ -162,7 +199,7 @@ io.on('connection',socket=>{
     emitState(room);
   });
 
-  socket.on('add-custom-song',({title,artist,youtubeUrl,start,end,lyrics}={},ack=()=>{})=>{
+  socket.on('add-custom-song',({title,artist,youtubeUrl,start,end,lyrics,style}={},ack=()=>{})=>{
     const room=rooms.get(socket.data.roomCode);
     if(!room||room.hostId!==socket.id||room.phase!=='lobby')return ack({ok:false,error:'Operazione non consentita.'});
     const youtubeId=youtubeIdFrom(youtubeUrl);
@@ -173,41 +210,35 @@ io.on('connection',socket=>{
     if(e-s<4||e-s>15)return ack({ok:false,error:'Il frammento deve durare da 4 a 15 secondi.'});
     room.prompts.push({
       id:`custom-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-      type:'youtube-song',
-      title:String(title||'Canzone personalizzata').trim().slice(0,60),
-      artist:String(artist||'Artista').trim().slice(0,50),
-      youtubeId,
-      start:s,
-      end:e,
-      duration:e-s,
-      emoji:'🎵',
-      custom:true,
+      type:'youtube-song', title:String(title||'Canzone personalizzata').trim().slice(0,60),
+      artist:String(artist||'Artista').trim().slice(0,50), language:'CUSTOM', youtubeId,
+      start:s,end:e,duration:e-s,emoji:'🎵',custom:true,
       lyricCue:String(lyrics||'').trim().slice(0,500),
+      style:['pop','dance','ballad','rap','rock','power'].includes(style)?style:'pop',
       text:`Ascolta questi ${e-s} secondi e prova a imitarli nel modo più fedele possibile.`
     });
-    ack({ok:true});
-    emitState(room);
+    ack({ok:true}); emitState(room);
   });
 
   socket.on('start-game',()=>{
     const room=rooms.get(socket.data.roomCode);
     if(!room||room.hostId!==socket.id||room.phase!=='lobby')return;
     if(room.players.length!==2||!room.players.every(p=>p.ready))return;
-    room.players.forEach(p=>p.score=0);
-    room.round=0;
-    room.usedPromptIds.clear();
-    resetRoundData(room);
-    beginRound(room);
+    room.players.forEach(p=>p.score=0); room.round=0; room.usedPromptIds.clear();
+    resetRoundData(room); beginRound(room);
   });
 
-  socket.on('submit-performance',({audioDataUrl}={},ack=()=>{})=>{
+  socket.on('submit-performance',({audioDataUrl,aiScore,aiBreakdown}={},ack=()=>{})=>{
     const room=rooms.get(socket.data.roomCode);
     if(!room||room.phase!=='perform'||room.currentPerformerId!==socket.id)return ack({ok:false,error:'Non è il tuo turno.'});
     if(!audioDataUrl||typeof audioDataUrl!=='string'||audioDataUrl.length>2500000)return ack({ok:false,error:'Registrazione non valida o troppo grande.'});
-    room.performance={performerId:socket.id,audioDataUrl};
-    room.phase='judge';
-    ack({ok:true});
-    emitState(room);
+    room.performance={
+      performerId:socket.id,
+      audioDataUrl,
+      aiScore:Math.max(0,Math.min(100,Math.round(Number(aiScore)||0))),
+      aiBreakdown:cleanBreakdown(aiBreakdown)
+    };
+    room.phase='judge'; ack({ok:true}); emitState(room);
   });
 
   socket.on('submit-judge-score',({score}={},ack=()=>{})=>{
@@ -215,27 +246,29 @@ io.on('connection',socket=>{
     if(!room||room.phase!=='judge'||!room.performance)return ack({ok:false});
     if(socket.id===room.currentPerformerId)return ack({ok:false,error:'Non puoi votarti.'});
     const judgeScore=Math.max(1,Math.min(10,Number(score)||1));
-    const finalScore=Math.round(judgeScore*10);
+    const human100=Math.round(judgeScore*10);
+    const aiScore=room.performance.aiScore;
+    const w=room.settings.aiWeight;
+    const finalScore=Math.round(human100*(1-w)+aiScore*w);
     const performer=room.players.find(p=>p.id===room.currentPerformerId);
     if(performer)performer.score+=finalScore;
-    room.lastResult={performerId:room.currentPerformerId,judgeScore,finalScore};
-    room.phase='result';
-    ack({ok:true});
-    emitState(room);
+    room.lastResult={
+      performerId:room.currentPerformerId, judgeScore, humanScore:human100,
+      aiScore, aiBreakdown:room.performance.aiBreakdown, finalScore
+    };
+    room.phase='result'; ack({ok:true}); emitState(room);
     setTimeout(()=>{
       if(!rooms.has(room.code)||room.phase!=='result')return;
-      if(room.round>=room.settings.rounds)finishGame(room);else beginRound(room);
-    },3200);
+      if(room.round>=room.settings.rounds)finishGame(room); else beginRound(room);
+    },4600);
   });
 
   socket.on('rematch',()=>{
     const room=rooms.get(socket.data.roomCode);
     if(!room||room.phase!=='finished')return;
-    room.phase='lobby';room.round=0;room.currentPerformerId=null;
+    room.phase='lobby'; room.round=0; room.currentPerformerId=null;
     room.players.forEach(p=>{p.score=0;p.ready=false});
-    room.usedPromptIds.clear();
-    resetRoundData(room);
-    emitState(room);
+    room.usedPromptIds.clear(); resetRoundData(room); emitState(room);
   });
 
   socket.on('disconnect',()=>{
@@ -249,4 +282,4 @@ io.on('connection',socket=>{
   });
 });
 
-server.listen(PORT,'0.0.0.0',()=>console.log(`Choicer Voicer online on port ${PORT}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Choicer Voicer online on port ${PORT} • ${SONGS.length} songs`));
