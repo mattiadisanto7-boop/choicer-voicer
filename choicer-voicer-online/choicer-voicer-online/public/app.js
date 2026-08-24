@@ -21,6 +21,7 @@ let judgePlayer = null;
 let ytResolve;
 const ytReady = new Promise(r => ytResolve = r);
 const playerTimers = { perform:null, judge:null };
+const pendingPlayback = { perform:null, judge:null };
 
 function showScreen(id){ $$('.screen').forEach(x=>x.classList.remove('active')); $('#'+id)?.classList.add('active'); }
 function showPhase(id){ ['phasePerform','phaseJudge','phaseResult','phaseFinished'].forEach(x=>$('#'+x)?.classList.add('hidden')); $('#'+id)?.classList.remove('hidden'); }
@@ -30,6 +31,12 @@ function normalizeCode(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]
 function durationOf(p){ return Math.max(4,Math.min(15,Number(p?.duration)||((Number(p?.end)||0)-(Number(p?.start)||0))||10)); }
 function escapeHtml(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function fileToDataUrl(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+function setLyrics(el,p){
+  if(!el)return;
+  const txt=String(p?.lyricCue||'').trim();
+  el.textContent=txt;
+  el.classList.toggle('hidden',!txt);
+}
 function beep(type='tap'){
   if(!soundOn)return;
   try{
@@ -59,17 +66,44 @@ function initYouTubePlayers(){
   if(performPlayer&&judgePlayer)return;
   let readyCount=0;
   const onReady=()=>{ readyCount++; if(readyCount===2)ytResolve(); };
-  const common={
+  const make=(id,key)=>new YT.Player(id,{
     height:'100%',width:'100%',
     playerVars:{controls:0,disablekb:1,fs:0,playsinline:1,rel:0,iv_load_policy:3,modestbranding:1,origin:location.origin},
-    events:{onReady,onError:()=>toast('Questo video YouTube non è riproducibile qui.')}
-  };
-  performPlayer=new YT.Player('songPlayer',common);
-  judgePlayer=new YT.Player('judgeSongPlayer',common);
+    events:{
+      onReady,
+      onError:()=>toast('Questo video YouTube non è riproducibile qui.'),
+      onStateChange:e=>handlePlayerState(key,e)
+    }
+  });
+  performPlayer=make('songPlayer','perform');
+  judgePlayer=make('judgeSongPlayer','judge');
+}
+function handlePlayerState(key,e){
+  const pending=pendingPlayback[key];
+  if(!pending||pending.started||e.data!==YT.PlayerState.PLAYING)return;
+  pending.started=true;
+  pending.onPlaying?.();
+  clearPlayerTimer(key);
+  playerTimers[key]=setTimeout(()=>finishPlayback(key),pending.durationMs+250);
+}
+function finishPlayback(key){
+  const pending=pendingPlayback[key];
+  clearPlayerTimer(key);
+  if(!pending)return;
+  pendingPlayback[key]=null;
+  try{playerFor(key)?.pauseVideo();}catch{}
+  try{pending.audio?.pause(); if(pending.audio)pending.audio.currentTime=0;}catch{}
+  pending.onEnd?.();
 }
 function playerFor(key){ return key==='judge'?judgePlayer:performPlayer; }
 function clearPlayerTimer(key){ if(playerTimers[key])clearTimeout(playerTimers[key]); playerTimers[key]=null; }
-function stopPlayer(key){ clearPlayerTimer(key); try{playerFor(key)?.stopVideo();}catch{} }
+function stopPlayer(key){
+  clearPlayerTimer(key);
+  const pending=pendingPlayback[key];
+  pendingPlayback[key]=null;
+  try{pending?.audio?.pause(); if(pending?.audio)pending.audio.currentTime=0;}catch{}
+  try{playerFor(key)?.stopVideo();}catch{}
+}
 async function cueSong(key,p){
   if(!p?.youtubeId)return;
   await ytReady;
@@ -83,18 +117,40 @@ async function playSong(key,p,{onEnd}={}){
   if(!p?.youtubeId)return;
   await ytReady;
   const pl=playerFor(key);
-  clearPlayerTimer(key);
+  stopPlayer(key);
+  pendingPlayback[key]={started:false,durationMs:durationOf(p)*1000,audio:null,onEnd};
   try{
     pl.unMute();
     pl.setVolume(100);
     pl.loadVideoById({videoId:p.youtubeId,startSeconds:Number(p.start)||0,endSeconds:Number(p.end)||10});
-    playerTimers[key]=setTimeout(()=>{
-      try{pl.pauseVideo();}catch{}
-      clearPlayerTimer(key);
-      onEnd?.();
-    },durationOf(p)*1000+500);
   }catch{
+    pendingPlayback[key]=null;
     toast('Non riesco ad avviare questo pezzo.');
+    onEnd?.();
+  }
+}
+async function playDubbedSong(key,p,audio,{onEnd}={}){
+  if(!p?.youtubeId||!audio)return;
+  await ytReady;
+  const pl=playerFor(key);
+  stopPlayer(key);
+  try{audio.pause(); audio.currentTime=0;}catch{}
+  pendingPlayback[key]={
+    started:false,
+    durationMs:durationOf(p)*1000,
+    audio,
+    onPlaying:async()=>{
+      try{audio.currentTime=0; await audio.play();}
+      catch{toast('Non riesco a riprodurre la registrazione.');}
+    },
+    onEnd
+  };
+  try{
+    pl.mute();
+    pl.loadVideoById({videoId:p.youtubeId,startSeconds:Number(p.start)||0,endSeconds:Number(p.end)||10});
+  }catch{
+    pendingPlayback[key]=null;
+    toast('Non riesco ad avviare il video.');
     onEnd?.();
   }
 }
@@ -129,12 +185,15 @@ $('#addSongBtn').onclick=()=>{
     artist:$('#customArtist').value.trim(),
     youtubeUrl:$('#customYoutube').value.trim(),
     start:Number($('#customStart').value),
-    end:Number($('#customEnd').value)
+    end:Number($('#customEnd').value),
+    lyrics:$('#customLyrics').value.trim()
   };
   if(!payload.title||!payload.youtubeUrl){ $('#customStatus').textContent='Inserisci almeno titolo e link YouTube.'; return; }
   socket.emit('add-custom-song',payload,r=>{
     $('#customStatus').textContent=r.ok?'Frammento aggiunto ✓':(r.error||'Errore');
-    if(r.ok){ $('#customTitle').value=''; $('#customArtist').value=''; $('#customYoutube').value=''; }
+    if(r.ok){
+      $('#customTitle').value=''; $('#customArtist').value=''; $('#customYoutube').value=''; $('#customLyrics').value='';
+    }
   });
 };
 
@@ -183,7 +242,8 @@ function renderPerform(){
   $('#songArtist').textContent=p?.artist||'';
   $('#promptText').textContent=p?.text||'Ascolta e imita.';
   $('#songDuration').textContent=`⏱ ${durationOf(p)} secondi`;
-  $('#songRange').textContent=`🎯 Parte già scelta`;
+  $('#songLanguage').textContent=`🌍 ${p?.language||'MIX'}`;
+  setLyrics($('#songLyrics'),p);
   $('#songPlayerWrap').classList.remove('hidden');
   $('#roleBadge').textContent=isMe?'IL TUO TURNO':'TURNO AVVERSARIO';
   $('#performControls').classList.toggle('hidden',!isMe);
@@ -344,11 +404,18 @@ function finishRecording(){
   $('#myRecording').src=recordingUrl;
   $('#myRecording').classList.remove('hidden');
   $('#afterRecordActions').classList.remove('hidden');
-  $('#recordStatus').textContent='Registrazione riuscita ✓ Riascoltala prima di inviarla.';
+  $('#recordStatus').textContent='Registrazione riuscita ✓ Puoi anche provarla direttamente sul video.';
   $('#recordBtn').disabled=true;
+  cueSong('perform',state.currentPrompt);
 }
 
+$('#previewPerformanceBtn').onclick=async()=>{
+  if(!recordingBlob)return;
+  const a=$('#myRecording');
+  await playDubbedSong('perform',state.currentPrompt,a,{onEnd:()=>cueSong('perform',state.currentPrompt)});
+};
 $('#retryBtn').onclick=()=>{
+  stopPlayer('perform');
   recordingBlob=null;
   if(recordingUrl)URL.revokeObjectURL(recordingUrl);
   recordingUrl='';
@@ -358,9 +425,11 @@ $('#retryBtn').onclick=()=>{
   $('#afterRecordActions').classList.add('hidden');
   $('#recordBtn').disabled=false;
   $('#recordStatus').textContent=`Riprova: ${durationOf(state.currentPrompt)} secondi di registrazione.`;
+  cueSong('perform',state.currentPrompt);
 };
 $('#sendPerformanceBtn').onclick=async()=>{
   if(!recordingBlob)return;
+  stopPlayer('perform');
   const audioDataUrl=await fileToDataUrl(recordingBlob);
   $('#sendPerformanceBtn').disabled=true;
   socket.emit('submit-performance',{audioDataUrl},r=>{
@@ -375,7 +444,8 @@ function renderJudge(){
   const p=state.currentPrompt;
   const isPerformer=state.currentPerformerId===me;
   $('#judgeSongTitle').textContent=p?.title||'Canzone';
-  $('#judgeSongArtist').textContent=`${p?.artist||''} • ${durationOf(p)} secondi`;
+  $('#judgeSongArtist').textContent=`${p?.artist||''} • ${durationOf(p)} secondi • ${p?.language||''}`;
+  setLyrics($('#judgeSongLyrics'),p);
   $('#judgeControls').classList.toggle('hidden',isPerformer);
   $('#waitingJudge').classList.toggle('hidden',!isPerformer);
   $('#judgeBadge').textContent=isPerformer?'IMITAZIONE INVIATA':'SEI IL GIUDICE';
@@ -387,11 +457,9 @@ $('#judgeReferenceBtn').onclick=async()=>{
   $('#judgeRecording').pause();
   await playSong('judge',state.currentPrompt,{onEnd:()=>cueSong('judge',state.currentPrompt)});
 };
-$('#judgePerformanceBtn').onclick=()=>{
-  stopPlayer('judge');
+$('#judgePerformanceBtn').onclick=async()=>{
   const a=$('#judgeRecording');
-  try{a.currentTime=0}catch{}
-  a.play().catch(()=>toast('Non riesco a riprodurre la registrazione.'));
+  await playDubbedSong('judge',state.currentPrompt,a,{onEnd:()=>cueSong('judge',state.currentPrompt)});
 };
 function renderJudgeScale(){
   $('#judgeScale').innerHTML=Array.from({length:10},(_,i)=>`<button class="judge-num ${selectedJudge===i+1?'selected':''}" data-v="${i+1}">${i+1}</button>`).join('');
@@ -447,6 +515,7 @@ function resetLocalRound(){
   $('#afterRecordActions').classList.add('hidden');
   $('#submitJudgeBtn').disabled=true;
   $('#micHelpBtn').classList.add('hidden'); $('#micHelp').classList.add('hidden');
+  setLyrics($('#songLyrics'),null); setLyrics($('#judgeSongLyrics'),null);
 }
 
 window.addEventListener('beforeunload',()=>{
