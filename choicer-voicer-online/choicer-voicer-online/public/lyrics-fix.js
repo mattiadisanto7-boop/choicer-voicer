@@ -9,7 +9,9 @@
       el.textContent = text;
       el.classList.toggle('hidden', !text);
       const hint = el.parentElement?.querySelector('.captions-hint');
-      if (hint) hint.textContent = p?.custom && text ? 'Testo inserito dall’host' : 'CC: sottotitoli YouTube completi, se disponibili';
+      if (hint) hint.textContent = p?.custom && text
+        ? 'Testo inserito dall’host'
+        : 'CC YouTube: il brano viene accettato solo se verificati';
     };
   } catch {}
 
@@ -17,7 +19,7 @@
     tryCaptions = function (player, prompt) {
       if (!player) return;
       const languageCode = langFor(prompt);
-      [120, 550, 1200, 2200].forEach(delay => {
+      [100, 420, 850, 1500, 2400].forEach(delay => {
         setTimeout(() => {
           try { player.loadModule?.('captions'); } catch {}
           try { player.loadModule?.('cc'); } catch {}
@@ -37,7 +39,10 @@
       const onReady = () => { readyCount++; if (readyCount === 2) ytResolve(); };
       const make = (id, key) => new YT.Player(id, {
         height: '100%', width: '100%',
-        playerVars: { controls: 0, disablekb: 1, fs: 0, playsinline: 1, rel: 0, iv_load_policy: 3, cc_load_policy: 1, origin: location.origin },
+        playerVars: {
+          controls: 0, disablekb: 1, fs: 0, playsinline: 1, rel: 0,
+          iv_load_policy: 3, cc_load_policy: 1, origin: location.origin
+        },
         events: {
           onReady,
           onError: () => toast('Questo video YouTube non è riproducibile qui.'),
@@ -46,7 +51,9 @@
       });
       performPlayer = make('songPlayer', 'perform');
       judgePlayer = make('judgeSongPlayer', 'judge');
-    } catch (e) { console.warn('Caption patch init failed', e); }
+    } catch (e) {
+      console.warn('Caption patch init failed', e);
+    }
   };
 
   try {
@@ -57,12 +64,24 @@
   } catch {}
 
   const style = document.createElement('style');
-  style.textContent = `.captions-hint{position:absolute!important;top:8px!important;left:8px!important;bottom:auto!important;z-index:5!important;max-width:72%;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.62);color:#fff;font-size:.72rem;line-height:1.15;pointer-events:none}.lyrics-overlay.hidden{display:none!important}`;
+  style.textContent = `.captions-hint{position:absolute!important;top:8px!important;left:8px!important;bottom:auto!important;z-index:5!important;max-width:78%;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.62);color:#fff;font-size:.72rem;line-height:1.15;pointer-events:none}.lyrics-overlay.hidden{display:none!important}`;
   document.head.appendChild(style);
 
-  // Load the stricter singing judge and muted-video recording patch after the base app/caption patch.
-  const singingPatch = document.createElement('script');
-  singingPatch.src = '/singing-fix.js';
-  singingPatch.defer = false;
-  document.body.appendChild(singingPatch);
+  function loadPatch(src) {
+    if (document.querySelector(`script[src="${src}"]`)) return;
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = false;
+    document.body.appendChild(s);
+  }
+
+  // The base page already loads singing-fix.js and judge-v4.js. Load the new layers only after both are ready.
+  window.addEventListener('load', () => {
+    loadPatch('/catalog-v2.js');
+    loadPatch('/judge-v5.js');
+
+    document.querySelectorAll('.captions-hint').forEach(el => {
+      el.textContent = 'Solo brani con sottotitoli verificati';
+    });
+  });
 })();
