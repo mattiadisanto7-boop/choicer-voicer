@@ -232,10 +232,11 @@ io.on('connection',socket=>{
     const room=rooms.get(socket.data.roomCode);
     if(!room||room.phase!=='perform'||room.currentPerformerId!==socket.id)return ack({ok:false,error:'Non è il tuo turno.'});
     if(!audioDataUrl||typeof audioDataUrl!=='string'||audioDataUrl.length>2500000)return ack({ok:false,error:'Registrazione non valida o troppo grande.'});
+    const aiAvailable = aiScore !== null && aiScore !== undefined && aiScore !== '' && Number.isFinite(Number(aiScore));
     room.performance={
       performerId:socket.id,
       audioDataUrl,
-      aiScore:Math.max(0,Math.min(100,Math.round(Number(aiScore)||0))),
+      aiScore:aiAvailable ? Math.max(0,Math.min(100,Math.round(Number(aiScore)))) : null,
       aiBreakdown:cleanBreakdown(aiBreakdown)
     };
     room.phase='judge'; ack({ok:true}); emitState(room);
@@ -248,13 +249,15 @@ io.on('connection',socket=>{
     const judgeScore=Math.max(1,Math.min(10,Number(score)||1));
     const human100=Math.round(judgeScore*10);
     const aiScore=room.performance.aiScore;
+    const aiUsed=aiScore !== null && aiScore !== undefined && Number.isFinite(Number(aiScore));
     const w=room.settings.aiWeight;
-    const finalScore=Math.round(human100*(1-w)+aiScore*w);
+    const finalScore=aiUsed ? Math.round(human100*(1-w)+aiScore*w) : human100;
     const performer=room.players.find(p=>p.id===room.currentPerformerId);
     if(performer)performer.score+=finalScore;
     room.lastResult={
       performerId:room.currentPerformerId, judgeScore, humanScore:human100,
-      aiScore, aiBreakdown:room.performance.aiBreakdown, finalScore
+      aiScore:aiUsed ? aiScore : null, aiUsed,
+      aiBreakdown:room.performance.aiBreakdown, finalScore
     };
     room.phase='result'; ack({ok:true}); emitState(room);
     setTimeout(()=>{
