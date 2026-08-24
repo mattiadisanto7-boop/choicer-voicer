@@ -16,7 +16,7 @@
         <div class="logo-orb">🎤</div>
         <p class="eyebrow">MUSIC IMITATION PARTY</p>
         <h1>CHOICER<br><span>VOICER</span></h1>
-        <p class="tagline">Ascolta. Imita. Fatti giudicare.</p>
+        <p class="tagline">Ascolta. Imita. Rivedi il video con la tua voce.</p>
       </div>
       <div class="card home-card">
         <label>Il tuo nome</label>
@@ -40,7 +40,7 @@
 
       <div class="hero-mini">
         <span class="pill">1 VS 1 MUSICALE</span>
-        <h2>Un pezzetto di canzone.<br>Una sola possibilità di imitarlo bene.</h2>
+        <h2>Frammenti italiani e inglesi.<br>Imita la voce e il ritmo.</h2>
       </div>
 
       <div id="playersLobby" class="players"></div>
@@ -65,6 +65,7 @@
             <label>Da <input id="customStart" type="number" min="0" value="30" /></label>
             <label>A <input id="customEnd" type="number" min="4" value="40" /></label>
           </div>
+          <textarea id="customLyrics" rows="3" maxlength="500" placeholder="Testo del frammento (facoltativo)"></textarea>
           <button id="addSongBtn" class="btn ghost">Aggiungi frammento</button>
           <small id="customStatus">Durata consentita: da 4 a 15 secondi.</small>
         </div>
@@ -72,9 +73,9 @@
 
       <div class="card cinema-rules">
         <strong>🎵 Come funziona</strong>
-        <p>1. Ascolti un frammento breve già scelto dal gioco.</p>
-        <p>2. Premi “Registra imitazione” e dopo il conto alla rovescia canti/imiti per la stessa durata.</p>
-        <p>3. L'altro giocatore confronta originale e imitazione e vota da 1 a 10.</p>
+        <p>1. Ascolti un frammento breve già scelto dal gioco e vedi le parole-guida.</p>
+        <p>2. Premi “Registra imitazione” e canti/imiti per la stessa durata.</p>
+        <p>3. Dopo l'invio, il video viene riprodotto muto con la voce registrata al posto dell'originale.</p>
       </div>
 
       <div class="lobby-actions">
@@ -101,16 +102,17 @@
           <h2 id="songTitle">Preparati...</h2>
           <p id="songArtist" class="song-artist"></p>
           <p id="promptText" class="scene-instruction"></p>
-          <div class="scene-meta"><span id="songDuration"></span><span id="songRange"></span></div>
+          <div class="scene-meta"><span id="songDuration"></span><span id="songLanguage"></span></div>
           <div id="songPlayerWrap" class="video-wrap fixed-scene hidden">
             <div id="songPlayer"></div>
             <div class="video-lock" aria-hidden="true"></div>
+            <div id="songLyrics" class="lyrics-overlay hidden"></div>
           </div>
           <button id="listenBtn" class="listen-btn"><span>▶</span> ASCOLTA IL PEZZETTO</button>
         </div>
 
         <div id="performControls" class="perform-controls">
-          <div class="steps"><span class="on">1. Ascolta</span><span>2. Imita</span><span>3. Voto</span></div>
+          <div class="steps"><span class="on">1. Ascolta</span><span>2. Imita</span><span>3. Invia</span></div>
           <button id="recordBtn" class="record-btn" disabled>
             <span class="mic">🎤</span>
             <strong>REGISTRA<br>IMITAZIONE</strong>
@@ -120,6 +122,7 @@
           <div id="recordProgress" class="record-progress hidden"><div id="recordProgressBar"></div></div>
           <audio id="myRecording" controls class="hidden"></audio>
           <div id="afterRecordActions" class="dub-actions hidden">
+            <button id="previewPerformanceBtn" class="btn secondary">▶ Video con la mia voce</button>
             <button id="retryBtn" class="btn ghost">↻ Rifai</button>
             <button id="sendPerformanceBtn" class="btn primary">Invia imitazione</button>
           </div>
@@ -142,9 +145,10 @@
           <div id="judgeSongPlayerWrap" class="video-wrap compact fixed-scene">
             <div id="judgeSongPlayer"></div>
             <div class="video-lock" aria-hidden="true"></div>
+            <div id="judgeSongLyrics" class="lyrics-overlay hidden"></div>
           </div>
-          <button id="judgeReferenceBtn" class="audio-line">▶ Ascolta originale</button>
-          <button id="judgePerformanceBtn" class="audio-line accent">🎤 Ascolta imitazione</button>
+          <button id="judgeReferenceBtn" class="audio-line">▶ Guarda/ascolta originale</button>
+          <button id="judgePerformanceBtn" class="audio-line accent">🎤 Guarda il video con l'imitazione</button>
           <audio id="judgeRecording"></audio>
         </div>
         <div id="judgeControls">
@@ -156,6 +160,7 @@
         <div id="waitingJudge" class="waiting hidden">
           <div class="spinner"></div>
           <h3>Il giudice sta decidendo…</h3>
+          <p>Puoi rivedere la tua imitazione nel video qui sopra.</p>
         </div>
       </div>
 
