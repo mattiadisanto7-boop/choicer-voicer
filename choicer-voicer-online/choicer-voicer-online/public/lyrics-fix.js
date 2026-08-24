@@ -59,4 +59,10 @@
   const style = document.createElement('style');
   style.textContent = `.captions-hint{position:absolute!important;top:8px!important;left:8px!important;bottom:auto!important;z-index:5!important;max-width:72%;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.62);color:#fff;font-size:.72rem;line-height:1.15;pointer-events:none}.lyrics-overlay.hidden{display:none!important}`;
   document.head.appendChild(style);
+
+  // Load the stricter singing judge and muted-video recording patch after the base app/caption patch.
+  const singingPatch = document.createElement('script');
+  singingPatch.src = '/singing-fix.js';
+  singingPatch.defer = false;
+  document.body.appendChild(singingPatch);
 })();
