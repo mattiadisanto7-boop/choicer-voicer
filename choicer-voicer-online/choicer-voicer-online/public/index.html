@@ -16,7 +16,7 @@
         <div class="logo-orb">🎤</div>
         <p class="eyebrow">MUSIC IMITATION PARTY</p>
         <h1>CHOICER<br><span>VOICER</span></h1>
-        <p class="tagline">Ascolta. Imita. IA + avversario giudicano.</p>
+        <p class="tagline">Ascolta. Imita. Confronta davvero.</p>
       </div>
       <div class="card home-card">
         <label>Il tuo nome</label>
@@ -55,7 +55,7 @@
         </div>
         <div class="setting-row">
           <span>Giudizio finale</span>
-          <strong>50% IA • 50% avversario</strong>
+          <strong>50% IA se affidabile • altrimenti 100% avversario</strong>
         </div>
       </div>
 
@@ -80,21 +80,21 @@
 
       <div class="card cinema-rules">
         <strong>🎵 Come funziona</strong>
-        <p>1. Ascolti un frammento breve già scelto. Il player prova ad attivare i sottotitoli YouTube quando disponibili.</p>
-        <p>2. Registri la tua imitazione per la stessa durata e puoi rivedere il video con la tua voce al posto dell'originale.</p>
-        <p>3. Il giudice automatico analizza intonazione, ritmo, presenza vocale, dinamica e pulizia. L'avversario vota separatamente.</p>
+        <p>1. Ascolti il frammento originale. Il gioco crea sul dispositivo un riferimento temporaneo per il giudice automatico.</p>
+        <p>2. Quando imiti, riparte lo stesso video completamente muto: puoi seguire immagini e sottotitoli mentre il microfono registra.</p>
+        <p>3. L'IA confronta la tua registrazione con il riferimento originale. Se il confronto non è abbastanza affidabile, non inventa un voto.</p>
       </div>
 
       <div class="card ai-note">
-        <strong>🤖 Giudice automatico beta</strong>
-        <p>Il browser non può leggere direttamente l'audio interno di YouTube. Il confronto automatico usa quindi il profilo musicale del frammento e l'analisi tecnica della tua registrazione; non è un confronto audio 1:1 con il master originale.</p>
+        <strong>🤖 Giudice automatico V4</strong>
+        <p>Per il confronto più preciso, durante l'ascolto dell'originale usa l'altoparlante del dispositivo e non parlare. Se il microfono non riesce a sentire bene l'originale (per esempio con alcune cuffie o durante certe chiamate), l'IA viene disattivata per quel round e vale solo il voto dell'avversario.</p>
       </div>
 
       <div class="lobby-actions">
         <button id="readyBtn" class="btn secondary big">Sono pronto</button>
         <button id="startBtn" class="btn primary big" disabled>Avvia partita</button>
       </div>
-      <p class="hint">Il microfono viene richiesto solo quando premi Registra imitazione.</p>
+      <p class="hint">Niente più voti IA “a caso”: se manca un riferimento affidabile, vedrai N/D.</p>
     </section>
 
     <section id="game" class="screen">
@@ -133,7 +133,7 @@
           <div id="countdown" class="countdown-inline hidden"></div>
           <div id="recordStatus" class="record-status">Ascolta prima il pezzo</div>
           <div id="recordProgress" class="record-progress hidden"><div id="recordProgressBar"></div></div>
-          <div id="aiAnalyzing" class="ai-analyzing hidden">🤖 Analisi della performance…</div>
+          <div id="aiAnalyzing" class="ai-analyzing hidden">🤖 Confronto con l'originale…</div>
           <audio id="myRecording" controls class="hidden"></audio>
           <div id="afterRecordActions" class="dub-actions hidden">
             <button id="previewPerformanceBtn" class="btn secondary">▶ Video con la mia voce</button>
@@ -188,11 +188,12 @@
           <div><span>🤖 Giudice automatico</span><strong id="aiScore">--</strong></div>
           <div><span>👤 Avversario</span><strong id="judgeScore">--</strong></div>
         </div>
+        <p id="aiResultNote" class="hint"></p>
         <div class="card ai-breakdown-card">
           <strong>Analisi automatica</strong>
           <div id="aiBreakdown" class="ai-breakdown"></div>
         </div>
-        <p>Il punteggio finale è la media dei due giudici.</p>
+        <p>Se l'IA è disponibile, il punteggio finale è 50% IA e 50% avversario.</p>
       </div>
 
       <div id="phaseFinished" class="phase hidden finished-phase">
@@ -210,5 +211,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/app.js"></script>
   <script src="/lyrics-fix.js"></script>
+  <script src="/singing-fix.js"></script>
+  <script src="/judge-v4.js"></script>
 </body>
 </html>
