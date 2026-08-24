@@ -132,7 +132,6 @@
     const hop = Math.max(128, Math.round(dsRate * 0.025));
     const pitches = [];
     const confs = [];
-    let voicedFrames = 0;
 
     for (let pos = 0; pos + frameSize < data.length; pos += hop) {
       const frame = data.subarray(pos, pos + frameSize);
@@ -142,7 +141,6 @@
       if (rms < Math.max(0.005, globalRms * 0.24)) {
         pitches.push(0); confs.push(0); continue;
       }
-      voicedFrames++;
 
       const minLag = Math.max(2, Math.floor(dsRate / 700));
       const maxLag = Math.min(frame.length - 2, Math.floor(dsRate / 80));
@@ -165,7 +163,8 @@
     const valid = pitches.filter(Boolean);
     if (!valid.length) return { score: 0, coverage: 0, stability: 0, harmonicity: 0, range: 0 };
     const coverage = valid.length / Math.max(1, pitches.length);
-    const harmonicity = confs.filter(Boolean).reduce((s, x) => s + x, 0) / Math.max(1, confs.filter(Boolean).length);
+    const harmonicValues = confs.filter(Boolean);
+    const harmonicity = harmonicValues.reduce((s, x) => s + x, 0) / Math.max(1, harmonicValues.length);
 
     const sorted = [...valid].sort((a,b)=>a-b);
     const med = sorted[Math.floor(sorted.length / 2)] || valid[0];
@@ -214,7 +213,6 @@
     }
   }
 
-  // Make stopping always stop video + speech as well.
   stopRecording = function () {
     clearTimeout(recordTimer); recordTimer = null;
     try { speechRec?.stop(); } catch {}
@@ -227,7 +225,6 @@
     try { playerFor('perform')?.pauseVideo(); } catch {}
   };
 
-  // During imitation the same clip now runs muted, with captions visible.
   const recordBtn = $('#recordBtn');
   if (recordBtn) recordBtn.onclick = async () => {
     if (!hasListened || isRecording || state?.phase !== 'perform' || state.currentPerformerId !== me) return;
@@ -281,7 +278,6 @@
     playSilentSongWhileRecording(state.currentPrompt);
   };
 
-  // Stricter judge: base DSP + singing evidence + word match when browser recognition works.
   analyzeRecording = async function (blob, prompt) {
     await finishSpeechCheck();
     const base = await BaseAnalyze(blob, prompt);
@@ -290,42 +286,44 @@
     catch { singing = { score: 35 }; }
 
     const lyricScore = speechHadResult ? lyricMatchScore(prompt?.lyricCue, speechTranscript) : null;
+    const expectedWordCount = normalizeWords(prompt?.lyricCue).length;
     const baseScore = Math.max(0, Math.min(100, Number(base?.score) || 0));
     const singingScore = Math.max(0, Math.min(100, Number(singing?.score) || 0));
 
-    // Speaking instead of singing must no longer earn a normal score.
-    let final = baseScore * 0.48 + singingScore * 0.52;
+    let final = baseScore * 0.45 + singingScore * 0.55;
 
-    if (singingScore < 18) final = Math.min(final, 8);
-    else if (singingScore < 30) final = Math.min(final, 18);
-    else if (singingScore < 42) final = Math.min(final, 35);
+    // Mere speech/noise is capped aggressively even when word recognition is unavailable.
+    if (singingScore < 18) final = Math.min(final, 5);
+    else if (singingScore < 30) final = Math.min(final, 15);
+    else if (singingScore < 42) final = Math.min(final, 30);
+    else if (singingScore < 50) final = Math.min(final, 45);
 
-    // If speech recognition clearly heard different words, apply a very strong content penalty.
+    // If clear spoken/sung words do not match the expected cue, the score collapses.
     if (lyricScore !== null) {
-      if (lyricScore < 8) final = Math.min(final, 3);
-      else if (lyricScore < 20) final = Math.min(final, 10);
-      else if (lyricScore < 35) final = Math.min(final, 25);
-      else if (lyricScore < 50) final = Math.min(final, 45);
-      else final = final * 0.72 + lyricScore * 0.28;
+      if (lyricScore < 8 && expectedWordCount >= 2) final = 0;
+      else if (lyricScore < 8) final = Math.min(final, 12);
+      else if (lyricScore < 20) final = Math.min(final, 8);
+      else if (lyricScore < 35) final = Math.min(final, 22);
+      else if (lyricScore < 50) final = Math.min(final, 42);
+      else final = final * 0.70 + lyricScore * 0.30;
     }
 
     final = Math.max(0, Math.min(100, Math.round(final)));
     const ratio = baseScore > 0 ? Math.min(1, final / baseScore) : 0;
     const breakdown = { ...(base?.breakdown || {}) };
     for (const key of Object.keys(breakdown)) {
-      breakdown[key] = Math.round(Math.max(0, Math.min(100, Number(breakdown[key]) || 0)) * Math.max(0.15, ratio));
+      breakdown[key] = Math.round(Math.max(0, Math.min(100, Number(breakdown[key]) || 0)) * Math.max(0.10, ratio));
     }
-    // Make the visible diagnostics reflect obvious non-singing/content failures.
     if (singingScore < 35) {
       breakdown.intonation = Math.min(breakdown.intonation ?? 100, singingScore);
       breakdown.voice = Math.min(breakdown.voice ?? 100, singingScore);
     }
     if (lyricScore !== null && lyricScore < 35) {
-      breakdown.rhythm = Math.min(breakdown.rhythm ?? 100, Math.max(3, lyricScore));
-      breakdown.voice = Math.min(breakdown.voice ?? 100, Math.max(3, lyricScore));
+      breakdown.rhythm = Math.min(breakdown.rhythm ?? 100, Math.max(0, lyricScore));
+      breakdown.voice = Math.min(breakdown.voice ?? 100, Math.max(0, lyricScore));
     }
 
-    console.info('[Choicer AI]', {
+    console.info('[Choicer AI v2]', {
       base: baseScore,
       singing: singingScore,
       lyricMatch: lyricScore,
