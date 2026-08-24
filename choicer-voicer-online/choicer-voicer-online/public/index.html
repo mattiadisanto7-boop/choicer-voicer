@@ -16,7 +16,7 @@
         <div class="logo-orb">🎤</div>
         <p class="eyebrow">MUSIC IMITATION PARTY</p>
         <h1>CHOICER<br><span>VOICER</span></h1>
-        <p class="tagline">Ascolta. Imita. Rivedi il video con la tua voce.</p>
+        <p class="tagline">Ascolta. Imita. IA + avversario giudicano.</p>
       </div>
       <div class="card home-card">
         <label>Il tuo nome</label>
@@ -40,7 +40,7 @@
 
       <div class="hero-mini">
         <span class="pill">1 VS 1 MUSICALE</span>
-        <h2>Frammenti italiani e inglesi.<br>Imita la voce e il ritmo.</h2>
+        <h2><span id="songCount">50+</span> frammenti italiani e internazionali.<br>Imita voce, ritmo e intensità.</h2>
       </div>
 
       <div id="playersLobby" class="players"></div>
@@ -52,6 +52,10 @@
           <select id="roundsSelect">
             <option value="6">6</option><option value="8" selected>8</option><option value="10">10</option><option value="12">12</option><option value="16">16</option>
           </select>
+        </div>
+        <div class="setting-row">
+          <span>Giudizio finale</span>
+          <strong>50% IA • 50% avversario</strong>
         </div>
       </div>
 
@@ -65,6 +69,9 @@
             <label>Da <input id="customStart" type="number" min="0" value="30" /></label>
             <label>A <input id="customEnd" type="number" min="4" value="40" /></label>
           </div>
+          <select id="customStyle">
+            <option value="pop">Pop</option><option value="dance">Dance</option><option value="ballad">Ballad</option><option value="rap">Rap</option><option value="rock">Rock</option><option value="power">Power vocal</option>
+          </select>
           <textarea id="customLyrics" rows="3" maxlength="500" placeholder="Testo del frammento (facoltativo)"></textarea>
           <button id="addSongBtn" class="btn ghost">Aggiungi frammento</button>
           <small id="customStatus">Durata consentita: da 4 a 15 secondi.</small>
@@ -73,9 +80,14 @@
 
       <div class="card cinema-rules">
         <strong>🎵 Come funziona</strong>
-        <p>1. Ascolti un frammento breve già scelto dal gioco e vedi le parole-guida.</p>
-        <p>2. Premi “Registra imitazione” e canti/imiti per la stessa durata.</p>
-        <p>3. Dopo l'invio, il video viene riprodotto muto con la voce registrata al posto dell'originale.</p>
+        <p>1. Ascolti un frammento breve già scelto. Il player prova ad attivare i sottotitoli YouTube quando disponibili.</p>
+        <p>2. Registri la tua imitazione per la stessa durata e puoi rivedere il video con la tua voce al posto dell'originale.</p>
+        <p>3. Il giudice automatico analizza intonazione, ritmo, presenza vocale, dinamica e pulizia. L'avversario vota separatamente.</p>
+      </div>
+
+      <div class="card ai-note">
+        <strong>🤖 Giudice automatico beta</strong>
+        <p>Il browser non può leggere direttamente l'audio interno di YouTube. Il confronto automatico usa quindi il profilo musicale del frammento e l'analisi tecnica della tua registrazione; non è un confronto audio 1:1 con il master originale.</p>
       </div>
 
       <div class="lobby-actions">
@@ -107,6 +119,7 @@
             <div id="songPlayer"></div>
             <div class="video-lock" aria-hidden="true"></div>
             <div id="songLyrics" class="lyrics-overlay hidden"></div>
+            <div class="captions-hint">CC YouTube attivi se disponibili</div>
           </div>
           <button id="listenBtn" class="listen-btn"><span>▶</span> ASCOLTA IL PEZZETTO</button>
         </div>
@@ -120,6 +133,7 @@
           <div id="countdown" class="countdown-inline hidden"></div>
           <div id="recordStatus" class="record-status">Ascolta prima il pezzo</div>
           <div id="recordProgress" class="record-progress hidden"><div id="recordProgressBar"></div></div>
+          <div id="aiAnalyzing" class="ai-analyzing hidden">🤖 Analisi della performance…</div>
           <audio id="myRecording" controls class="hidden"></audio>
           <div id="afterRecordActions" class="dub-actions hidden">
             <button id="previewPerformanceBtn" class="btn secondary">▶ Video con la mia voce</button>
@@ -153,6 +167,7 @@
         </div>
         <div id="judgeControls">
           <h3>Quanto gli somigliava?</h3>
+          <p class="hint">Il voto automatico resta nascosto finché non confermi il tuo.</p>
           <div id="judgeScale" class="judge-scale"></div>
           <div class="judge-labels"><span>Per niente 😵</span><span>Identico 🤯</span></div>
           <button id="submitJudgeBtn" class="btn primary big" disabled>Conferma voto</button>
@@ -169,8 +184,15 @@
         <div id="resultAvatar" class="result-avatar">🎤</div>
         <h2 id="resultName">Performance</h2>
         <div class="result-score"><span id="resultScore">84</span><small>/100</small></div>
-        <div class="breakdown single"><div><span>Voto avversario</span><strong id="judgeScore">9/10</strong></div></div>
-        <p>Prossimo round tra pochi secondi…</p>
+        <div class="dual-score">
+          <div><span>🤖 Giudice automatico</span><strong id="aiScore">--</strong></div>
+          <div><span>👤 Avversario</span><strong id="judgeScore">--</strong></div>
+        </div>
+        <div class="card ai-breakdown-card">
+          <strong>Analisi automatica</strong>
+          <div id="aiBreakdown" class="ai-breakdown"></div>
+        </div>
+        <p>Il punteggio finale è la media dei due giudici.</p>
       </div>
 
       <div id="phaseFinished" class="phase hidden finished-phase">
